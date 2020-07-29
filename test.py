@@ -1,6 +1,7 @@
 import yfinance as yf
 import streamlit as st
 import ta
+import jinja2
 import pandas as pd
 import plotly
 import plotly.express as px
