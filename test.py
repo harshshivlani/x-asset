@@ -190,7 +190,7 @@ fx = import_data_yahoo('Currencies')
 
 
 def display_items(data, asset_class):
-    print(st.dataframe(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns))))
+    st.dataframe(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns)))
 
     st.subheader("Price Return Performance")
     start_date = st.selectbox('Select Period', list(disp_opts.keys()), index=3, format_func = format_func, key='chart')
