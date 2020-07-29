@@ -132,8 +132,7 @@ def returns_hmap(data, cat, asset_class, sortby='1-Day'):
     df2 = tickers.merge(df_perf, on=asset_class)
     df2  = df2.sort_values(by=sortby, ascending=False)
     df2 = df2.round(2).style.format('{0:,.2f}%', subset=list(df2.drop(['Ticker'], axis=1).columns))\
-                     .background_gradient(cmap='RdYlGn', subset=(df2.drop(['Ticker'], axis=1).columns))\
-                     .set_properties(**{'font-size': '10pt',})
+                     .background_gradient(cmap='RdYlGn', subset=(df2.drop(['Ticker'], axis=1).columns))
     return df2
 
 #PLOT RETURN CHART BY PLOTLY
@@ -190,7 +189,7 @@ fx = import_data_yahoo('Currencies')
 
 
 def display_items(data, asset_class):
-    st.dataframe(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns)))
+    print(st.write(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns))))
 
     st.subheader("Price Return Performance")
     start_date = st.selectbox('Select Period', list(disp_opts.keys()), index=3, format_func = format_func, key='chart')
