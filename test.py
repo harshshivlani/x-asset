@@ -14,7 +14,6 @@ import etf as etf
 import ipywidgets as widgets
 import investpy
 from ipywidgets import interact, interact_manual
-yf.pdr_override()
 #notebook formatting
 from IPython.core.display import display, HTML
 
@@ -132,7 +131,8 @@ def returns_hmap(data, cat, asset_class, sortby='1-Day'):
     df2 = tickers.merge(df_perf, on=asset_class)
     df2  = df2.sort_values(by=sortby, ascending=False)
     df2 = df2.round(2).style.format('{0:,.2f}%', subset=list(df2.drop(['Ticker'], axis=1).columns))\
-                     .background_gradient(cmap='RdYlGn', subset=(df2.drop(['Ticker'], axis=1).columns))
+                     .background_gradient(cmap='RdYlGn', subset=(df2.drop(['Ticker'], axis=1).columns))\
+                     .set_properties(**{'font-size': '10pt',})
     return df2
 
 #PLOT RETURN CHART BY PLOTLY
@@ -187,19 +187,32 @@ fixedinc = import_data_yahoo('Fixed Income')
 sectoral = import_data('Sectoral')
 fx = import_data_yahoo('Currencies')
 
+dtype1 = st.selectbox('Data Type: ', ('Multi Timeframe Returns Table', 'Performance Chart', 'Rolling Returns Trend Heatmap', 'All'))
 
 def display_items(data, asset_class):
-    print(st.write(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns))))
-
-    st.subheader("Price Return Performance")
-    start_date = st.selectbox('Select Period', list(disp_opts.keys()), index=3, format_func = format_func, key='chart')
-    print(st.plotly_chart(plot_chart(data=data, start_date=start_date, cat=list(data.columns))))
-
-    st.subheader("Rolling Return Trend Heatmap")
-    start_date = st.selectbox('Select Period: ', list(disp_opts.keys()), index=3, format_func = format_func, key='trend')
-    inv_opt = st.selectbox('Select Timescale: ', list(inv.keys()), index=0, format_func = format_inv)
-    ma = st.number_input('Select Rolling Return Period: ', value=15, min_value=1)
-    print(st.plotly_chart(trend_analysis(data=data, cat=list(data.columns), start_date=start_date, inv=inv_opt, ma=ma)))
+    if dtype1=='Multi Timeframe Returns Table':
+        #print(st.write("As of "+ str(data.index[-1])))
+        st.dataframe(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns)))
+    elif dtype1=='Performance Chart':
+        st.subheader("Price Return Performance")
+        start_date = st.selectbox('Select Period', list(disp_opts.keys()), index=3, format_func = format_func, key='chart')
+        print(st.plotly_chart(plot_chart(data=data, start_date=start_date, cat=list(data.columns))))
+    elif dtype1=='Rolling Returns Trend Heatmap':
+        st.subheader("Rolling Return Trend Heatmap")
+        start_date = st.selectbox('Select Period: ', list(disp_opts.keys()), index=3, format_func = format_func, key='trend')
+        inv_opt = st.selectbox('Select Timescale: ', list(inv.keys()), index=0, format_func = format_inv)
+        ma = st.number_input('Select Rolling Return Period: ', value=15, min_value=1)
+        print(st.plotly_chart(trend_analysis(data=data, cat=list(data.columns), start_date=start_date, inv=inv_opt, ma=ma)))
+    elif dtype1=='All':
+        st.dataframe(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns)))
+        st.subheader("Price Return Performance")
+        start_date = st.selectbox('Select Period', list(disp_opts.keys()), index=3, format_func = format_func, key='chart')
+        print(st.plotly_chart(plot_chart(data=data, start_date=start_date, cat=list(data.columns))))
+        st.subheader("Rolling Return Trend Heatmap")
+        start_date = st.selectbox('Select Period: ', list(disp_opts.keys()), index=3, format_func = format_func, key='trend')
+        inv_opt = st.selectbox('Select Timescale: ', list(inv.keys()), index=0, format_func = format_inv)
+        ma = st.number_input('Select Rolling Return Period: ', value=15, min_value=1)
+        print(st.plotly_chart(trend_analysis(data=data, cat=list(data.columns), start_date=start_date, inv=inv_opt, ma=ma)))
 
 # Display the functions/analytics
 if asset_class=="Fixed Income":
