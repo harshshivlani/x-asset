@@ -131,9 +131,9 @@ def returns_hmap(data, cat, asset_class, sortby='1-Day'):
     tickers.index = etf_list[asset_class]
     df2 = tickers.merge(df_perf, on=asset_class)
     df2  = df2.sort_values(by=sortby, ascending=False)
-    df2 = df2.round(2).style.format('{0:,.2f}%', subset=list(df2.drop(['Ticker'], axis=1).columns))\
-                     .background_gradient(cmap='RdYlGn', subset=(df2.drop(['Ticker'], axis=1).columns))\
-                     .set_properties(**{'font-size': '10pt',})
+    #df2 = df2.round(2).style.format('{0:,.2f}%', subset=list(df2.drop(['Ticker'], axis=1).columns))\
+                     #.background_gradient(cmap='RdYlGn', subset=(df2.drop(['Ticker'], axis=1).columns))\
+                     #.set_properties(**{'font-size': '10pt',})
     return df2
 
 #PLOT RETURN CHART BY PLOTLY
