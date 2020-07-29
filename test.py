@@ -30,6 +30,7 @@ def user_input_features():
 
 asset_class = user_input_features()
 
+st.header(asset_class)
 
 from pandas.tseries import offsets
 one_m = date.today() - datetime.timedelta(30)
@@ -189,7 +190,7 @@ dtype1 = st.selectbox('Data Type: ', ('Multi Timeframe Returns Table', 'Performa
 def display_items(data, asset_class):
     if dtype1=='Multi Timeframe Returns Table':
         #print(st.write("As of "+ str(data.index[-1])))
-        st.dataframe(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns)).style.highlight_max(axis=0))
+        st.dataframe(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns)), width=1400, height=600)
     elif dtype1=='Performance Chart':
         st.subheader("Price Return Performance")
         start_date = st.selectbox('Select Period', list(disp_opts.keys()), index=3, format_func = format_func, key='chart')
