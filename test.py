@@ -249,7 +249,7 @@ else:
 def display_items(data, asset_class):
     if dtype1=='Multi Timeframe Returns Table':
         #print(st.write("As of "+ str(data.index[-1])))
-        st.dataframe(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns)), width=1400, height=600)
+        st.table(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns)), width=1400, height=600)
     elif dtype1=='Performance Chart':
         st.subheader("Price Return Performance")
         start_date = st.selectbox('Select Period', list(disp_opts.keys()), index=3, format_func = format_func, key='chart')
