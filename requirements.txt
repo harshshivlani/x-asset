@@ -18,4 +18,3 @@ voila
 nsepy
 investpy
 streamlit
-ta
