@@ -373,3 +373,98 @@ def analytics(price_data, returns_data):
                                                     ('From 23rd March', '2020-03-23')], value=ytd, description = 'Period'),
              inv = widgets.Dropdown(options=[('Daily', 'B'), ('Weekly', 'W'), ('Monthly', 'BM')], value='B', description='Return Interval:', style=style),
              ma = widgets.BoundedIntText(value=15, min=1, max=30, step=1, description='Rolling Return Period:', disabled=False, style=style));
+
+#####    
+def updated_world_indices(category='Major'):
+    """
+    
+    """
+    tdy = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().year)
+    idxs = pd.read_excel('World_Indices_List.xlsx', index_col=0, header=0, sheet_name=category)
+    index_names = list(idxs['Indices'])
+    country_names = list(idxs['Country'])
+    
+    def idx_data(index, country):
+        df = investpy.get_index_historical_data(index=index, country=country, from_date='01/01/2020', to_date=tdy)['Close']
+        df = pd.DataFrame(df)
+        df.columns = [index]
+        return df
+    
+    df = pd.DataFrame(index=pd.bdate_range(start='2020-01-01', end=date.today()))
+    df.index.name='Date'
+    
+    #Stitch Local Currency Indices Data
+    for i in range(len(idxs)):
+        df = df.join(idx_data(index_names[i], country_names[i]), on='Date')
+        
+    df1 = df.iloc[:-1,:].ffill().dropna()
+    df1.index.name = 'Date'
+    
+    #Local Currency Returns Table
+    oned_lcl = pd.concat([df1.iloc[-1,:],
+                         df1.iloc[-1,:]-df1.iloc[-2,:],
+                        (df1.iloc[-1,:]/df1.iloc[-2,:]-1),
+                        (df1.iloc[-1,:]/df1.iloc[-6,:]-1),
+                        (df1.iloc[-1,:]/df1.iloc[-22,:]-1),
+                        (df1.iloc[-1,:]/df1.iloc[0,:]-1)], axis=1)
+    oned_lcl.columns = ['Price (EOD)','1D Chg', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)']
+    
+    #Add Country and Currency Names
+    cntry = pd.DataFrame(idxs['Country'])
+    cntry.index = idxs['Indices']
+
+    currency = pd.DataFrame(idxs['Currency'])
+    currency.index = idxs['Indices']
+    
+    oned_lcl = oned_lcl.sort_values('1D Chg (%)', ascending=False)
+    oned_lcl.index.name = 'Indices'
+    oned_lcl = oned_lcl.merge(cntry['Country'], on='Indices')
+    oned_lcl = oned_lcl.merge(currency['Currency'], on='Indices')
+    oned_lcl=oned_lcl[['Country', 'Price (EOD)','1D Chg', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)', 'Currency']]
+    
+    #Import Currency Data
+
+    ccyidx = yf.download("CADUSD=X BRLUSD=X MXNUSD=X EURUSD=X GBPUSD=X EURUSD=X EURUSD=X EURUSD=X EURUSD=X EURUSD=X CHFUSD=X EURUSD=X EURUSD=X EURUSD=X SEKUSD=X DKKUSD=X RUBUSD=X PLNUSD=X HUFUSD=X TRYUSD=X SARUSD=X JPYUSD=X AUDUSD=X NZDUSD=X CNYUSD=X CNYUSD=X CNYUSD=X CNYUSD=X HKDUSD=X TWDUSD=X THBUSD=X KRWUSD=X IDRUSD=X INRUSD=X INRUSD=X PHPUSD=X PKRUSD=X VNDUSD=X BHDUSD=X BGNUSD=X CLPUSD=X COPUSD=X EURUSD=X CZKUSD=X EGPUSD=X EURUSD=X EURUSD=X EURUSD=X MYRUSD=X OMRUSD=X PENUSD=X QARUSD=X SGDUSD=X ZARUSD=X KRWUSD=X TNDUSD=X", start='2020-01-01', progress=False)['Close'].ffill()
+    dfmix = df1.merge(ccyidx, on='Date')
+    ccys = dfmix.iloc[:,len(idxs):]
+    
+    #Calculate Currency Returns
+    oned_ccy = pd.concat([ccys.iloc[-1,:],
+                             ccys.iloc[-1,:]-ccys.iloc[-2,:],
+                            (ccys.iloc[-1,:]/ccys.iloc[-2,:]-1),
+                            (ccys.iloc[-1,:]/ccys.iloc[-6,:]-1),
+                            (ccys.iloc[-1,:]/ccys.iloc[-22,:]-1),
+                            (ccys.iloc[-1,:]/ccys.iloc[0,:]-1)], axis=1)
+    oned_ccy.columns = ['Price (EOD)','1D Chg', '1D CChg (%)', '1W CChg (%)', '1M CChg (%)', 'CChg YTD (%)']
+    
+    abc = oned_ccy.copy()
+    abc = abc.append({'Price (EOD)':0, '1D Chg':0, '1D CChg (%)':0, '1W CChg (%)':0, '1M CChg (%)':0, 'CChg YTD (%)':0}, ignore_index=True)
+    abc.index = list(oned_ccy.index) + ['USD']
+    abc.index.name='Currency'
+    
+    #Convert Local Currency to USD Returns
+    oned_lcl_copy = oned_lcl.copy()
+    oned_lcl_copy['Indices'] = oned_lcl_copy.index
+    testa = oned_lcl_copy.merge(abc[['1D CChg (%)', '1W CChg (%)', '1M CChg (%)', 'CChg YTD (%)']], on='Currency')
+    testa.index = testa['Indices']
+
+    testa['$ 1D Chg (%)'] = (1+testa['1D Chg (%)'])*(1+testa['1D CChg (%)'])-1
+    testa['$ 1W Chg (%)'] = (1+testa['1W Chg (%)'])*(1+testa['1W CChg (%)'])-1
+    testa['$ 1M Chg (%)'] = (1+testa['1M Chg (%)'])*(1+testa['1M CChg (%)'])-1
+    testa['$ Chg YTD (%)'] = (1+testa['Chg YTD (%)'])*(1+testa['CChg YTD (%)'])-1
+
+    return testa
+
+def format_world_data(testa, usd='USD'):
+    if usd=='USD':
+        testa = testa[['Country', 'Price (EOD)', '$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)']]
+        testa = testa.sort_values('$ 1D Chg (%)', ascending=False)
+        formatted = testa.style.format({'Price (EOD)': "{:.2f}", '$ 1D Chg (%)': "{:.2%}", '$ 1W Chg (%)': "{:.2%}", '$ 1M Chg (%)': "{:.2%}", '$ Chg YTD (%)': "{:.2%}"})\
+                         .background_gradient(cmap='RdYlGn', subset=list(testa.drop(['Price (EOD)','Country'], axis=1).columns))
+    else:
+        testa = testa[['Country', 'Price (EOD)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)']]
+        testa = testa.sort_values('1D Chg (%)', ascending=False)
+        formatted = testa.style.format({'Price (EOD)': "{:.2f}", '1D Chg (%)': "{:.2%}", '1W Chg (%)': "{:.2%}", '1M Chg (%)': "{:.2%}", 'Chg YTD (%)': "{:.2%}"})\
+                         .background_gradient(cmap='RdYlGn', subset=list(testa.drop(['Price (EOD)','Country'], axis=1).columns))
+        
+    return testa, formatted

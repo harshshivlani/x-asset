@@ -1,8 +1,7 @@
 import yfinance as yf
 import streamlit as st
-import ta
-import jinja2
 import pandas as pd
+import numpy as np
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
@@ -26,12 +25,15 @@ st.write("""
 # Side Bar
 st.sidebar.header('User Input Parameters')
 def user_input_features():
-    asset_class = st.sidebar.selectbox("Select Asset Class:", ("World Equities", "Sectoral Equities", "Fixed Income", "REITs", "Currencies"))
+    asset_class = st.sidebar.selectbox("Select Asset Class:", ("World Indices", "World Equities", "Sectoral Equities", "Fixed Income", "REITs", "Currencies", "Commodities"))
     return asset_class
 
 asset_class = user_input_features()
 
+st.sidebar.markdown('Developed by Harsh Shivlani')
+
 st.header(asset_class)
+
 
 from pandas.tseries import offsets
 one_m = date.today() - datetime.timedelta(30)
@@ -49,6 +51,12 @@ oneyr = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().y
 #Define function to fetch historical data from Investing.com
 def hist_data(name, country):
     df = investpy.get_etf_historical_data(etf=name, country=country, from_date=oneyr, to_date=tdy)['Close']
+    df = pd.DataFrame(df)
+    df.columns = [name]
+    return df
+
+def hist_data_comd(name):
+    df = investpy.get_commodity_historical_data(commodity=name, from_date=oneyr, to_date=tdy)['Close']
     df = pd.DataFrame(df)
     df.columns = [name]
     return df
@@ -79,11 +87,16 @@ def import_data(asset_class):
     df.index.name='Date'
 
     #download and merge all data
-    for i in range(len(etf_list)):
-            df = df.join(hist_data(etf_list[asset_class][i], etf_list['Country'][i]), on='Date')
+    if asset_class=='Commodities':
+        for i in range(len(etf_list)):
+                df = df.join(hist_data_comd(etf_list[asset_class][i]), on='Date')
+    else:
+        for i in range(len(etf_list)):
+                df = df.join(hist_data(etf_list[asset_class][i], etf_list['Country'][i]), on='Date')
 
     #Forward fill for any missing days i.e. holidays
     df = df.iloc[:-1,:].ffill().dropna()
+    df = df.ffill().dropna()
     df.index.name = 'Date'
     return df
 
@@ -119,6 +132,7 @@ def returns_hmap(data, cat, asset_class, sortby='1-Day'):
     cat = subset or category (list), default is all ETFs mentioned
     """
     st.subheader("Multi Timeframe Returns of " + str(asset_class) + " ETFs")
+    st.markdown("Data as of :  " + str(data.index[-1].strftime("%b %d, %Y")))
     df = pd.DataFrame(data = (data.pct_change(1).iloc[-1,:], data.pct_change(5).iloc[-1,:], data.pct_change(21).iloc[-1,:],
                               data.pct_change(63).iloc[-1,:], data[str(year):].iloc[-1,:]/data[str(year):].iloc[0,:]-1, data[str(year):].iloc[-1,:]/data['2020-03-23':].iloc[0,:]-1,
                               data.pct_change(126).iloc[-1,:], data.pct_change(252).iloc[-1,:], drawdowns(data)))
@@ -132,6 +146,9 @@ def returns_hmap(data, cat, asset_class, sortby='1-Day'):
     tickers.index = etf_list[asset_class]
     df2 = tickers.merge(df_perf, on=asset_class)
     df2  = df2.sort_values(by=sortby, ascending=False)
+    df2 = df2.round(2).style.format('{0:,.2f}%', subset=list(df2.drop(['Ticker'], axis=1).columns))\
+                     .background_gradient(cmap='RdYlGn', subset=(df2.drop(['Ticker'], axis=1).columns))\
+                     .set_properties(**{'font-size': '10pt',})
     return df2
 
 #PLOT RETURN CHART BY PLOTLY
@@ -144,7 +161,7 @@ def plot_chart(data, cat, start_date=one_yr):
     fig = px.line(df, x=df.index, y=df.columns)
     fig.update_layout(xaxis_title='Date',
                       yaxis_title='Return (%)', font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f"),
-                      legend_title_text='ETFs', plot_bgcolor = 'White', yaxis_tickformat = '%', width=1300, height=650)
+                      legend_title_text='Securities', plot_bgcolor = 'White', yaxis_tickformat = '%', width=1300, height=650)
     fig.update_traces(hovertemplate='Date: %{x} <br>Return: %{y:.2%}')
     fig.update_yaxes(automargin=True)
     return fig
@@ -162,7 +179,7 @@ def trend_analysis(data, cat, start_date=one_yr, inv='B', ma=15):
             z=((d - d.mean())/d.std()).round(2).T.values,
             x=((d - d.mean())/d.std()).index,
             y=list(data[cat].columns), zmax=3, zmin=-3,
-            colorscale='rdylgn', hovertemplate='Date: %{x}<br>ETF: %{y}<br>Return Z-Score: %{z}<extra></extra>', colorbar = dict(title='Return Z-Score')))
+            colorscale='rdylgn', hovertemplate='Date: %{x}<br>Security: %{y}<br>Return Z-Score: %{z}<extra></extra>', colorbar = dict(title='Return Z-Score')))
 
     fig.update_layout(xaxis_nticks=20, font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f"), width=1300, height=650)
     return fig
@@ -185,8 +202,49 @@ worldeq = import_data_yahoo('World Equities')
 fixedinc = import_data_yahoo('Fixed Income')
 sectoral = import_data('Sectoral')
 fx = import_data_yahoo('Currencies')
+comd = import_data('Commodities')
 
-dtype1 = st.selectbox('Data Type: ', ('Multi Timeframe Returns Table', 'Performance Chart', 'Rolling Returns Trend Heatmap', 'All'))
+@st.cache(allow_output_mutation=True)
+def world_indices():
+    world_indices = etf.updated_world_indices('Major')
+    return world_indices
+
+
+
+def world_id_plots(wdx):
+    daily_usd = ((world_indices()[wdx]*100).dropna().sort_values(ascending=False))
+    fig = px.bar(daily_usd, color=daily_usd, color_continuous_scale='rdylgn', text=world_indices().sort_values(by=wdx, ascending=False)['Country'])
+    fig.update_layout(title = 'World Indices Performance (%) (EOD)',
+                           xaxis_title='Indices',
+                           yaxis_title='Return (%)', font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f"),
+                           legend_title_text='Return(%)', plot_bgcolor = 'White', yaxis_tickformat = '{:.2f}%', width=1300, height=650, hovermode='x')
+    fig.update_traces(hovertemplate='Index: %{x} <br>Return: %{y:.2f}%')
+    fig.update_yaxes(automargin=True)
+    return fig
+
+
+
+if asset_class=='World Indices':
+    if st.checkbox('Show World Indices Map'):
+        ret_type = st.selectbox('Return Period: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)'))
+        iso = pd.read_excel('World_Indices_List.xlsx', sheet_name='iso')
+        iso.set_index('Country', inplace=True)
+        data2 = etf.format_world_data(world_indices())[0].merge(iso['iso_alpha'], on='Country')
+
+        df = data2
+        fig1 = px.choropleth(df, locations="iso_alpha",
+                            color=ret_type,
+                            hover_name="Country",
+                            color_continuous_scale='RdYlGn')
+        fig1.update_layout(width=1000, height=650, title= 'World Equity Market USD Returns Heatmap (EOD)', font=dict(family="Segoe UI, monospace", size=13, color="#292828"))
+        st.plotly_chart(fig1)
+
+    usd = st.selectbox('Currency: ', ('USD', 'Local Currency'))
+    print(st.dataframe(etf.format_world_data(world_indices(), usd=usd)[1]))
+    wdx = st.selectbox('Plot Data Type: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)'))
+    st.plotly_chart(world_id_plots(wdx))
+else:
+    dtype1 = st.selectbox('Data Type: ', ('Multi Timeframe Returns Table', 'Performance Chart', 'Rolling Returns Trend Heatmap', 'All'))
 
 def display_items(data, asset_class):
     if dtype1=='Multi Timeframe Returns Table':
@@ -229,5 +287,5 @@ elif asset_class=='REITs':
 elif asset_class=='Currencies':
     print(display_items(fx, 'Currencies'))
 
-else:
-    "Please select a valid asset class from the list in the sidebar."
+elif asset_class=='Commodities':
+    print(display_items(comd, 'Commodities'))
