@@ -25,7 +25,7 @@ st.write("""
 # Side Bar
 st.sidebar.header('User Input Parameters')
 def user_input_features():
-    asset_class = st.sidebar.selectbox("Select Asset Class:", ("World Indices", "World Equities", "Sectoral Equities", "Fixed Income", "REITs", "Currencies", "Commodities"))
+    asset_class = st.sidebar.selectbox("Select Asset Class:", ("World Indices", "World Equities", "Sectoral Equities", "Indian Equities", "Fixed Income", "REITs", "Currencies", "Commodities"))
     return asset_class
 
 asset_class = user_input_features()
@@ -40,10 +40,9 @@ one_m = date.today() - datetime.timedelta(30)
 three_m = date.today() - datetime.timedelta(90)
 six_m = date.today() - datetime.timedelta(120)
 one_yr = date.today() - datetime.timedelta(365)
-three_yr = date.today() - datetime.timedelta(365*3)
-five_yr = date.today() - datetime.timedelta(365*5)
 ytd = date.today() - offsets.YearBegin()
 year = date.today().year
+yest = date.today() - datetime.timedelta(1)
 
 tdy = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().year)
 oneyr = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().year-1)
@@ -57,6 +56,12 @@ def hist_data(name, country):
 
 def hist_data_comd(name):
     df = investpy.get_commodity_historical_data(commodity=name, from_date=oneyr, to_date=tdy)['Close']
+    df = pd.DataFrame(df)
+    df.columns = [name]
+    return df
+
+def hist_data_india(name):
+    df = investpy.get_index_historical_data(index=name, country='India', from_date=oneyr, to_date=tdy)['Close']
     df = pd.DataFrame(df)
     df.columns = [name]
     return df
@@ -90,12 +95,18 @@ def import_data(asset_class):
     if asset_class=='Commodities':
         for i in range(len(etf_list)):
                 df = df.join(hist_data_comd(etf_list[asset_class][i]), on='Date')
+
+    elif asset_class=='Indian Equities':
+        for i in range(len(etf_list)):
+                df = df.join(hist_data_india(etf_list[asset_class][i]), on='Date')
+
     else:
         for i in range(len(etf_list)):
                 df = df.join(hist_data(etf_list[asset_class][i], etf_list['Country'][i]), on='Date')
 
     #Forward fill for any missing days i.e. holidays
-    df = df.ffill().dropna()
+    #df = df.iloc[:-1,:].ffill().dropna()
+    df = df[:yest].ffill().dropna()
     df.index.name = 'Date'
     return df
 
@@ -141,13 +152,21 @@ def returns_hmap(data, cat, asset_class, sortby='1-Day'):
 
     #Add Ticker Names and sort the dataframe
     etf_list = pd.read_excel('etf_names.xlsx', header=0, sheet_name=asset_class)
-    tickers = pd.DataFrame(etf_list['Ticker'])
-    tickers.index = etf_list[asset_class]
-    df2 = tickers.merge(df_perf, on=asset_class)
-    df2  = df2.sort_values(by=sortby, ascending=False)
-    df2 = df2.round(2).style.format('{0:,.2f}%', subset=list(df2.drop(['Ticker'], axis=1).columns))\
+    if asset_class=='Indian Equities':
+        df2 = df_perf.copy()
+        df2  = df2.sort_values(by=sortby, ascending=False)
+        df2 = df2.round(2).style.format('{0:,.2f}%')\
+                     .background_gradient(cmap='RdYlGn')\
+                     .set_properties(**{'font-size': '10pt',})
+    else:
+        tickers = pd.DataFrame(etf_list['Ticker'])
+        tickers.index = etf_list[asset_class]
+        df2 = tickers.merge(df_perf, on=asset_class)
+        df2  = df2.sort_values(by=sortby, ascending=False)
+        df2 = df2.round(2).style.format('{0:,.2f}%', subset=list(df2.drop(['Ticker'], axis=1).columns))\
                      .background_gradient(cmap='RdYlGn', subset=(df2.drop(['Ticker'], axis=1).columns))\
                      .set_properties(**{'font-size': '10pt',})
+    
     return df2
 
 #PLOT RETURN CHART BY PLOTLY
@@ -202,6 +221,7 @@ fixedinc = import_data_yahoo('Fixed Income')
 sectoral = import_data('Sectoral')
 fx = import_data_yahoo('Currencies')
 comd = import_data('Commodities')
+indiaeq = import_data('Indian Equities')
 
 @st.cache(allow_output_mutation=True)
 def world_indices():
@@ -245,46 +265,59 @@ if asset_class=='World Indices':
 else:
     dtype1 = st.selectbox('Data Type: ', ('Multi Timeframe Returns Table', 'Performance Chart', 'Rolling Returns Trend Heatmap', 'All'))
 
-def display_items(data, asset_class):
+def display_items(data, asset_class, cat):
     if dtype1=='Multi Timeframe Returns Table':
         #print(st.write("As of "+ str(data.index[-1])))
-        st.dataframe(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns)), width=1400, height=600)
+        st.dataframe(returns_hmap(data=data[cat], asset_class=asset_class, cat=cat), height=1500)
     elif dtype1=='Performance Chart':
         st.subheader("Price Return Performance")
         start_date = st.selectbox('Select Period', list(disp_opts.keys()), index=3, format_func = format_func, key='chart')
-        print(st.plotly_chart(plot_chart(data=data, start_date=start_date, cat=list(data.columns))))
+        print(st.plotly_chart(plot_chart(data=data[cat], start_date=start_date, cat=cat)))
     elif dtype1=='Rolling Returns Trend Heatmap':
         st.subheader("Rolling Return Trend Heatmap")
         start_date = st.selectbox('Select Period: ', list(disp_opts.keys()), index=3, format_func = format_func, key='trend')
         inv_opt = st.selectbox('Select Timescale: ', list(inv.keys()), index=0, format_func = format_inv)
         ma = st.number_input('Select Rolling Return Period: ', value=15, min_value=1)
-        print(st.plotly_chart(trend_analysis(data=data, cat=list(data.columns), start_date=start_date, inv=inv_opt, ma=ma)))
+        print(st.plotly_chart(trend_analysis(data=data[cat], cat=cat, start_date=start_date, inv=inv_opt, ma=ma)))
     elif dtype1=='All':
-        st.dataframe(returns_hmap(data=data, asset_class=asset_class, cat=list(data.columns)))
+        st.dataframe(returns_hmap(data=data[cat], asset_class=asset_class, cat=cat), height=1500)
         st.subheader("Price Return Performance")
         start_date = st.selectbox('Select Period', list(disp_opts.keys()), index=3, format_func = format_func, key='chart')
-        print(st.plotly_chart(plot_chart(data=data, start_date=start_date, cat=list(data.columns))))
+        print(st.plotly_chart(plot_chart(data=data[cat], start_date=start_date, cat=cat)))
         st.subheader("Rolling Return Trend Heatmap")
         start_date = st.selectbox('Select Period: ', list(disp_opts.keys()), index=3, format_func = format_func, key='trend')
         inv_opt = st.selectbox('Select Timescale: ', list(inv.keys()), index=0, format_func = format_inv)
         ma = st.number_input('Select Rolling Return Period: ', value=15, min_value=1)
-        print(st.plotly_chart(trend_analysis(data=data, cat=list(data.columns), start_date=start_date, inv=inv_opt, ma=ma)))
+        print(st.plotly_chart(trend_analysis(data=data[cat], cat=cat, start_date=start_date, inv=inv_opt, ma=ma)))
 
 # Display the functions/analytics
 if asset_class=="Fixed Income":
-    print(display_items(fixedinc, 'Fixed Income'))
+    option = st.selectbox('Category: ', ('All Fixed Income', 'Sovereign Fixed Income', 'Corporate Credit', 'High Yield', 'Municipals'))
+    st.write('**Note:** All returns are in USD')
+    print(display_items(fixedinc, 'Fixed Income', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Securities'])))
 
 elif asset_class=='World Equities':
-    print(display_items(worldeq, 'World Equities'))
+    option = st.selectbox('Category: ', ('All Countries', 'Emerging Markets', 'Asia', 'G10', 'Europe', 'Commodity Linked'))
+    st.write('**Note:** All returns are in USD')
+    print(display_items(worldeq, 'World Equities', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Countries'])))
 
 elif asset_class=='Sectoral Equities':
-    print(display_items(sectoral, 'Sectoral'))
+    option = st.selectbox('Category: ', ('United States', 'Eurozone', 'China', 'Canada', 'Australia'))
+    st.write('**Note:** Sectoral Equity ETF Returns are in local currency, except China and US ETFs which are in USD')
+    print(display_items(sectoral, 'Sectoral',  cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Sectors'])))
+
+elif asset_class=='Indian Equities':
+    option = st.selectbox('Category: ', ('All Indian Indices', 'Indian Sectoral', 'Indian Strategy Indices'))
+    st.write('**Note:** All returns are in INR')
+    print(display_items(indiaeq, 'Indian Equities', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Securities'])))
 
 elif asset_class=='REITs':
-    print(display_items(reits, 'REIT'))
+    st.write('**Note:** All returns are in USD')
+    print(display_items(reits, 'REIT', cat=list(reits.columns)))
 
 elif asset_class=='Currencies':
-    print(display_items(fx, 'Currencies'))
+    print(display_items(fx, 'Currencies', cat=list(fx.columns)))
 
 elif asset_class=='Commodities':
-    print(display_items(comd, 'Commodities'))
+    st.write('**Note:** All returns are in USD')
+    print(display_items(comd, 'Commodities', cat=list(comd.columns)))
