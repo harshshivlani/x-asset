@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import requests
 
 #filter warnings for final presentation
 import warnings
@@ -15,6 +16,9 @@ from datetime import date
 import time
 import datetime
 import investpy
+import plotly
+import plotly.graph_objects as go
+import plotly.express as px
 
 #notebook formatting
 from IPython.core.display import display, HTML
@@ -468,3 +472,132 @@ def format_world_data(testa, usd='USD'):
                          .background_gradient(cmap='RdYlGn', subset=list(testa.drop(['Price (EOD)','Country'], axis=1).columns))
         
     return testa, formatted
+
+
+
+def etf_details(ticker, option, asset):
+    """
+    """
+
+    url = 'https://etfdb.com/etf/{}/#etf-holdings&sort_name=weight&sort_order=desc&page=1'.format(ticker)
+    html = requests.get(url).content
+    df_list = pd.read_html(html)
+
+    url2 = 'https://finance.yahoo.com/quote/{}'.format(ticker)
+    html2 = requests.get(url2).content
+    df_list2 = pd.read_html(html2)
+    
+    if asset=='Equity/REIT ETF':
+        if option == 'Top 15 Holdings':
+            df_list[2] = df_list[2][:-1]
+            df_list[2]['% Assets'] = df_list[2]['% Assets'].str.rstrip('%').astype('float')
+            fig = go.Figure(go.Bar(
+                                    x=list(df_list[2]['% Assets']),
+                                    y=list(df_list[2]['Holding']), text=list(df_list[2]['Symbol']),
+                                    orientation='h', hovertemplate='Ticker: %{text}<br>Holding: %{x}<extra></extra>'))
+            fig.update_traces(texttemplate='%{x:.2f}%', textposition='outside')
+            fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
+            fig.update_layout(title="Top 15 Holdings", font=dict(family="Segoe UI",size=13,color="#7f7f7f"), yaxis=dict(autorange="reversed"), plot_bgcolor='rgb(255,255,255)')
+            return fig
+
+        elif option == 'Sector Exposure':
+            fig = px.pie(list(df_list[4]['Percentage'].str.rstrip('%').astype('float64')), values=list(df_list[4]['Percentage'].str.rstrip('%').astype('float64')),
+                                     names=list(df_list[4]['Sector']), color_discrete_sequence=px.colors.sequential.RdBu)
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_layout(title="ETF Sector Exposure", font=dict(family="Segoe UI",size=15,color="#7f7f7f"), xaxis={'categoryorder':'category descending'})
+            return fig
+
+
+        elif option == 'Market Cap Exposure':
+            fig = px.pie(list(df_list[5]['Percentage'].str.rstrip('%').astype('float')), values=list(df_list[5]['Percentage'].str.rstrip('%').astype('float')),
+                                     names=list(df_list[5]['Market Cap']), color_discrete_sequence=px.colors.sequential.RdBu)
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_layout(title="ETF Market Cap Exposure", font=dict(family="Segoe UI",size=15,color="#7f7f7f"))
+            return fig
+
+
+        elif option == 'Country Exposure':
+            fig = px.pie(list(df_list[8]['Percentage'].str.rstrip('%').astype('float')), values=list(df_list[8]['Percentage'].str.rstrip('%').astype('float')),
+                                     names=list(df_list[8]['Country']), color_discrete_sequence=px.colors.sequential.RdBu)
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_layout(title="ETF Country Exposure", font=dict(family="Segoe UI",size=15,color="#7f7f7f"))
+            return fig  
+
+
+        elif option == 'Asset Allocation':
+            fig = px.pie(list(df_list[9]['Percentage'].str.rstrip('%').astype('float')), values=list(df_list[9]['Percentage'].str.rstrip('%').astype('float')),
+                                     names=list(df_list[9]['Asset']), color_discrete_sequence=px.colors.sequential.RdBu)
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_layout(title="ETF Asset Class Exposure", font=dict(family="Segoe UI",size=15,color="#7f7f7f"))
+            return fig
+
+
+        elif option == 'General Overview':
+            summary1 = df_list2[1]
+            summary1.columns = ['Summary', 'Data']
+            return summary1.set_index('Summary')
+    
+    elif asset=='Fixed Income ETF':
+        if option == 'Top 15 Holdings':
+            df_list[2] = df_list[2][:-1]
+            df_list[2]['% Assets'] = df_list[2]['% Assets'].str.rstrip('%').astype('float')
+            fig = go.Figure(go.Bar(
+                            x=list(df_list[2]['% Assets']),
+                            y=list(df_list[2]['Holding']), text=list(df_list[2]['Symbol']),
+                            orientation='h', hovertemplate='Ticker: %{text}<br>Holding: %{x}<extra></extra>'))
+            fig.update_traces(texttemplate='%{x:.2f}%', textposition='outside')
+            fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
+            fig.update_layout(title="Top 15 Holdings for {}".format(ticker), font=dict(family="Segoe UI",size=13,color="#7f7f7f"), yaxis=dict(autorange="reversed"), plot_bgcolor='rgb(255,255,255)')
+            return fig       
+
+        if option == 'Bond Sector Exposure':
+            fig = px.pie(list(df_list[5]['Percentage'].str.rstrip('%').astype('float64')), values=list(df_list[5]['Percentage'].str.rstrip('%').astype('float64')),
+                             names=list(df_list[5]['Bond Sector']), color_discrete_sequence=px.colors.sequential.RdBu)
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_layout(title="Bond Sector Exposure for {}".format(ticker), font=dict(family="Segoe UI",size=15,color="#7f7f7f"), xaxis={'categoryorder':'category descending'})
+            return fig
+
+        if option == 'Coupon Breakdown':
+            fig = px.pie(list(df_list[6]['Percentage'].str.rstrip('%').astype('float64')), values=list(df_list[6]['Percentage'].str.rstrip('%').astype('float64')),
+                             names=list(df_list[6]['Coupon Range']), color_discrete_sequence=px.colors.sequential.RdBu)
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_layout(title="Bonds Coupon Breakdown for {}".format(ticker), font=dict(family="Segoe UI",size=15,color="#7f7f7f"), xaxis={'categoryorder':'category descending'})
+            return fig
+
+        if option == 'Credit Quality Exposure':
+            fig = px.pie(list(df_list[7]['Percentage'].str.rstrip('%').astype('float64')), values=list(df_list[7]['Percentage'].str.rstrip('%').astype('float64')),
+                             names=list(df_list[7]['Credit']), color_discrete_sequence=px.colors.sequential.RdBu)
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_layout(title="Bonds Credit Quality Exposure for {}".format(ticker), font=dict(family="Segoe UI",size=15,color="#7f7f7f"), xaxis={'categoryorder':'category descending'})
+            return fig
+
+        if option == 'Maturity Profile':
+            fig = px.pie(list(df_list[8]['Percentage'].str.rstrip('%').astype('float64')), values=list(df_list[8]['Percentage'].str.rstrip('%').astype('float64')),
+                             names=list(df_list[8]['Maturity']), color_discrete_sequence=px.colors.sequential.RdBu)
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_layout(title="Bonds Maturity Profile for {}".format(ticker), font=dict(family="Segoe UI",size=15,color="#7f7f7f"), xaxis={'categoryorder':'category descending'})
+            return fig
+        
+        if option == 'General Overview':
+            summary1 = df_list2[1]
+            summary1.columns = ['Summary', 'Data']
+            return summary1.set_index('Summary')
+        
+        
+### MACRO
+
+def world_pmis(continent, sortby='Last'):
+    if continent=='World':
+        url1 = 'https://tradingeconomics.com/country-list/manufacturing-pmi'
+    else:
+        url1 = 'https://tradingeconomics.com/country-list/manufacturing-pmi?continent={}'.format(continent)
+
+    html1 = requests.get(url1).content
+    df_list1 = pd.read_html(html1)
+
+    pmis = df_list1[0].iloc[:,:-1].set_index('Country')
+    pmis['Change'] = pmis['Last'] - pmis['Previous']
+    pmis = pmis[['Last', 'Previous', 'Change', 'Reference']]
+    pmis = pmis.sort_values(by=sortby, ascending=False)
+    return pmis.style.format({'Last': "{:.2f}", 'Previous': "{:.2f}", 'Change': "{:+.2f}"})\
+        .background_gradient(cmap='RdYlGn', subset=list(pmis.drop(['Reference'], axis=1).columns))

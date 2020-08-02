@@ -1,11 +1,13 @@
+import requests
 import yfinance as yf
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
+import requests
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
-import requests
 from datetime import date
 import datetime
 import edhec_risk_kit as erk
@@ -22,24 +24,11 @@ st.write("""
 # Cross Asset Market Analytics
 """)
 
-# Side Bar
-st.sidebar.header('User Input Parameters')
-def user_input_features():
-    asset_class = st.sidebar.selectbox("Select Asset Class:", ("World Indices", "World Equities", "Sectoral Equities", "Indian Equities", "Fixed Income", "REITs", "Currencies", "Commodities"))
-    return asset_class
-
-asset_class = user_input_features()
-
-st.sidebar.markdown('Developed by Harsh Shivlani')
-
-st.header(asset_class)
-
-
 from pandas.tseries import offsets
 one_m = date.today() - datetime.timedelta(30)
 three_m = date.today() - datetime.timedelta(90)
 six_m = date.today() - datetime.timedelta(120)
-one_yr = date.today() - datetime.timedelta(365)
+one_yr = date.today() - datetime.timedelta(370)
 ytd = date.today() - offsets.YearBegin()
 year = date.today().year
 yest = date.today() - datetime.timedelta(1)
@@ -242,30 +231,8 @@ def world_id_plots(wdx):
     return fig
 
 
-
-if asset_class=='World Indices':
-    if st.checkbox('Show World Indices Map'):
-        ret_type = st.selectbox('Return Period: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)'))
-        iso = pd.read_excel('World_Indices_List.xlsx', sheet_name='iso')
-        iso.set_index('Country', inplace=True)
-        data2 = etf.format_world_data(world_indices())[0].merge(iso['iso_alpha'], on='Country')
-
-        df = data2
-        fig1 = px.choropleth(df, locations="iso_alpha",
-                            color=ret_type,
-                            hover_name="Country",
-                            color_continuous_scale='RdYlGn')
-        fig1.update_layout(width=1000, height=650, title= 'World Equity Market USD Returns Heatmap (EOD)', font=dict(family="Segoe UI, monospace", size=13, color="#292828"))
-        st.plotly_chart(fig1)
-
-    usd = st.selectbox('Currency: ', ('USD', 'Local Currency'))
-    print(st.dataframe(etf.format_world_data(world_indices(), usd=usd)[1]))
-    wdx = st.selectbox('Plot Data Type: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)'))
-    st.plotly_chart(world_id_plots(wdx))
-else:
-    dtype1 = st.selectbox('Data Type: ', ('Multi Timeframe Returns Table', 'Performance Chart', 'Rolling Returns Trend Heatmap', 'All'))
-
 def display_items(data, asset_class, cat):
+    dtype1 = st.selectbox('Data Type: ', ('Multi Timeframe Returns Table', 'Performance Chart', 'Rolling Returns Trend Heatmap', 'All'))
     if dtype1=='Multi Timeframe Returns Table':
         #print(st.write("As of "+ str(data.index[-1])))
         st.dataframe(returns_hmap(data=data[cat], asset_class=asset_class, cat=cat), height=1500)
@@ -290,34 +257,93 @@ def display_items(data, asset_class, cat):
         ma = st.number_input('Select Rolling Return Period: ', value=15, min_value=1)
         print(st.plotly_chart(trend_analysis(data=data[cat], cat=cat, start_date=start_date, inv=inv_opt, ma=ma)))
 
+
+
+## MACRO DATA ANALYTICS
+
+
+
 # Display the functions/analytics
-if asset_class=="Fixed Income":
-    option = st.selectbox('Category: ', ('All Fixed Income', 'Sovereign Fixed Income', 'Corporate Credit', 'High Yield', 'Municipals'))
-    st.write('**Note:** All returns are in USD')
-    print(display_items(fixedinc, 'Fixed Income', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Securities'])))
+st.sidebar.header('User Input Parameters')
+side_options = st.sidebar.radio('Analytics App Contents', ('Cross Asset Data', 'ETF Details', 'Macroeconomic Data'))
 
-elif asset_class=='World Equities':
-    option = st.selectbox('Category: ', ('All Countries', 'Emerging Markets', 'Asia', 'G10', 'Europe', 'Commodity Linked'))
-    st.write('**Note:** All returns are in USD')
-    print(display_items(worldeq, 'World Equities', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Countries'])))
+if side_options == 'ETF Details':
+    def etf_details():
+        ticker_name = st.sidebar.text_input('Enter Ticker Name', value='URTH')
+        asset =  st.sidebar.selectbox('ETF Asset Class:', ('Equity/REIT ETF', 'Fixed Income ETF'))
+        if asset=='Equity/REIT ETF':
+            details = st.sidebar.selectbox('Select Data Type:', ('General Overview', 'Top 15 Holdings', 'Sector Exposure',
+                                    'Market Cap Exposure', 'Country Exposure', 'Asset Allocation'))
+        elif asset=='Fixed Income ETF':
+            details = st.sidebar.selectbox('Select Data Type:', ('General Overview', 'Top 15 Holdings', 'Bond Sector Exposure',
+                                    'Coupon Breakdown', 'Credit Quality Exposure', 'Maturity Profile'))
+        return [ticker_name, details, asset]
 
-elif asset_class=='Sectoral Equities':
-    option = st.selectbox('Category: ', ('United States', 'Eurozone', 'China', 'Canada', 'Australia'))
-    st.write('**Note:** Sectoral Equity ETF Returns are in local currency, except China and US ETFs which are in USD')
-    print(display_items(sectoral, 'Sectoral',  cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Sectors'])))
+    etf_details = etf_details()
+    st.write(etf.etf_details(etf_details[0].upper(), etf_details[1], etf_details[2]))
 
-elif asset_class=='Indian Equities':
-    option = st.selectbox('Category: ', ('All Indian Indices', 'Indian Sectoral', 'Indian Strategy Indices'))
-    st.write('**Note:** All returns are in INR')
-    print(display_items(indiaeq, 'Indian Equities', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Securities'])))
+elif side_options =='Cross Asset Data':
+    def user_input_features():
+        asset_class = st.sidebar.selectbox("Select Asset Class:", ("World Indices", "World Equities", "Sectoral Equities", "Indian Equities", "Fixed Income", "REITs", "Currencies", "Commodities"))
+        return asset_class
 
-elif asset_class=='REITs':
-    st.write('**Note:** All returns are in USD')
-    print(display_items(reits, 'REIT', cat=list(reits.columns)))
+    asset_class = user_input_features()
+    st.header(asset_class)
+    if asset_class=="Fixed Income":
+        option = st.selectbox('Category: ', ('All Fixed Income', 'Sovereign Fixed Income', 'Corporate Credit', 'High Yield', 'Municipals'))
+        st.write('**Note:** All returns are in USD')
+        print(display_items(fixedinc, 'Fixed Income', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Securities'])))
 
-elif asset_class=='Currencies':
-    print(display_items(fx, 'Currencies', cat=list(fx.columns)))
+    elif asset_class=='World Equities':
+        option = st.selectbox('Category: ', ('All Countries', 'Emerging Markets', 'Asia', 'G10', 'Europe', 'Commodity Linked'))
+        st.write('**Note:** All returns are in USD')
+        print(display_items(worldeq, 'World Equities', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Countries'])))
 
-elif asset_class=='Commodities':
-    st.write('**Note:** All returns are in USD')
-    print(display_items(comd, 'Commodities', cat=list(comd.columns)))
+    elif asset_class=='Sectoral Equities':
+        option = st.selectbox('Category: ', ('United States', 'Eurozone', 'China', 'Canada', 'Australia'))
+        st.write('**Note:** Sectoral Equity ETF Returns are in local currency, except China and US ETFs which are in USD')
+        print(display_items(sectoral, 'Sectoral',  cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Sectors'])))
+
+    elif asset_class=='Indian Equities':
+        option = st.selectbox('Category: ', ('All Indian Indices', 'Indian Sectoral', 'Indian Strategy Indices'))
+        st.write('**Note:** All returns are in INR')
+        print(display_items(indiaeq, 'Indian Equities', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Securities'])))
+
+    elif asset_class=='REITs':
+        st.write('**Note:** All returns are in USD')
+        print(display_items(reits, 'REIT', cat=list(reits.columns)))
+
+    elif asset_class=='Currencies':
+        print(display_items(fx, 'Currencies', cat=list(fx.columns)))
+
+    elif asset_class=='Commodities':
+        st.write('**Note:** All returns are in USD')
+        print(display_items(comd, 'Commodities', cat=list(comd.columns)))
+
+    elif asset_class=='World Indices':
+        if st.checkbox('Show World Indices Map'):
+            ret_type = st.selectbox('Return Period: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)'))
+            iso = pd.read_excel('World_Indices_List.xlsx', sheet_name='iso')
+            iso.set_index('Country', inplace=True)
+            data2 = etf.format_world_data(world_indices())[0].merge(iso['iso_alpha'], on='Country')
+
+            df = data2
+            fig1 = px.choropleth(df, locations="iso_alpha",
+                                color=ret_type,
+                                hover_name="Country",
+                                color_continuous_scale='RdYlGn')
+            fig1.update_layout(width=1000, height=650, title= 'World Equity Market USD Returns Heatmap (EOD)', font=dict(family="Segoe UI, monospace", size=13, color="#292828"))
+            st.plotly_chart(fig1)
+
+        usd = st.selectbox('Currency: ', ('USD', 'Local Currency'))
+        print(st.dataframe(etf.format_world_data(world_indices(), usd=usd)[1]))
+        wdx = st.selectbox('Plot Data Type: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)'))
+        st.plotly_chart(world_id_plots(wdx))
+
+elif side_options=='Macroeconomic Data':
+    st.subheader('World Manufacturing PMIs')
+    continent = st.selectbox('Select Continent', ('World', 'G20', 'America', 'Europe', 'Asia', 'Africa'))
+    st.dataframe(etf.world_pmis(continent=continent), width=1000, height=1500)
+
+
+st.sidebar.markdown('Developed by Harsh Shivlani')
