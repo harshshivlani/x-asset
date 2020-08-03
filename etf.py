@@ -601,3 +601,139 @@ def world_pmis(continent, sortby='Last'):
     pmis = pmis.sort_values(by=sortby, ascending=False)
     return pmis.style.format({'Last': "{:.2f}", 'Previous': "{:.2f}", 'Change': "{:+.2f}"})\
         .background_gradient(cmap='RdYlGn', subset=list(pmis.drop(['Reference'], axis=1).columns))
+
+
+def eco_calendar(importances=['Medium', 'High']):
+    """ 
+    
+    """
+    if importances=='All':
+        calendar1 = investpy.get_calendar(time_zone = 'GMT +5:30')
+    else:
+        calendar1 = investpy.get_calendar(time_zone = 'GMT +5:30', importances=importances)
+    cols = list(calendar1.columns)
+    calendar1.columns = [cols.capitalize() for cols in cols]
+    calendar1['Zone'] = calendar1['Zone'].str.capitalize()
+    calendar1['Importance'] = calendar1['Importance'].str.capitalize()
+    calendar1  = calendar1.drop('Id', axis=1).set_index('Date')
+    return calendar1
+
+#nbi:hide_in
+def country_macros(country, data_type):
+    url1 = 'https://tradingeconomics.com/{}/indicators'.format(country)
+    html1 = requests.get(url1).content
+    df_list1 = pd.read_html(html1)
+    pd.set_option('display.float_format', lambda x: '%.2f' % x)
+    
+    if data_type == 'Overview':
+        return df_list1[1].iloc[:,:-1].set_index('Overview')
+    elif data_type == 'GDP':
+        return df_list1[2].iloc[:,:-1].set_index('GDP')
+    elif data_type == 'Labour':
+        return df_list1[3].iloc[:,:-1].set_index('Labour')
+    elif data_type == 'Inflation':
+        return df_list1[4].iloc[:,:-1].set_index('Prices')
+    elif data_type == 'Money':
+        return df_list1[5].iloc[:,:-1].set_index('Money')
+    elif data_type == 'Trade':
+        return df_list1[6].iloc[:,:-1].set_index('Trade')
+    elif data_type == 'Government':
+        return df_list1[7].iloc[:,:-1].set_index('Government')
+    elif data_type == 'Taxes':
+        return df_list1[8].iloc[:,:-1].set_index('Taxes')
+    elif data_type == 'Business':
+        return df_list1[9].iloc[:,:-1].set_index('Business')
+    elif data_type == 'Consumer':
+        return df_list1[10].iloc[:,:-1].set_index('Consumer')
+    else:
+        return 
+    
+def live_charts(opt='Yes'):
+    if opt=='Yes':
+        javascript = """ 
+        <!-- TradingView Widget BEGIN -->
+        <div class="tradingview-widget-container">
+          <div id="tradingview_42617"></div>
+          <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/symbols/AMEX-SPY/" rel="noopener" target="_blank"><span class="blue-text">SPY Chart</span></a> by TradingView</div>
+          <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+          <script type="text/javascript">
+          new TradingView.widget(
+          {
+          "width": 980,
+          "height": 610,
+          "symbol": "AMEX:SPY",
+          "interval": "D",
+          "timezone": "Asia/Kolkata",
+          "theme": "light",
+          "style": "1",
+          "locale": "en",
+          "toolbar_bg": "#f1f3f6",
+          "enable_publishing": false,
+          "hide_side_toolbar": false,
+          "allow_symbol_change": true,
+          "container_id": "tradingview_42617"
+        }
+          );
+          </script>
+        </div>
+        <!-- TradingView Widget END -->
+        """
+        return HTML(javascript)
+    elif opt=='No':
+        return print('To view live charts of World Stocks, ETFs, FX & Commodities, select Yes')
+    
+def gdp(continent, sortby='Last'):   
+    url1 = 'https://tradingeconomics.com/country-list/gdp-annual-growth-rate?continent={}'.format(continent)
+    html1 = requests.get(url1).content
+    df_list1 = pd.read_html(html1)
+    df = df_list1[0].set_index('Country')
+    df['Change'] = df['Last'] - df['Previous']
+    df = df[['Last', 'Previous', 'Change', 'Reference', 'Unit']]
+    df.drop('Unit', axis=1, inplace=True)
+
+    df = df.sort_values(by=sortby, ascending=False)
+    
+    return df.style.format({'Last': "{:.2f}%", 'Previous': "{:.2f}%", 'Change': "{:+.2f}%"})\
+            .background_gradient(cmap='RdYlGn', subset=list(df.drop(['Reference'], axis=1).columns))
+
+
+def retail(continent, time='MoM', sortby='Last',):   
+    url1 = 'https://tradingeconomics.com/country-list/retail-sales-{}?continent={}'.format(time, continent)
+    html1 = requests.get(url1).content
+    df_list1 = pd.read_html(html1)
+    df = df_list1[0].set_index('Country')
+    df['Change'] = df['Last'] - df['Previous']
+    df = df[['Last', 'Previous', 'Change', 'Reference', 'Unit']]
+    df.drop('Unit', axis=1, inplace=True)
+
+    df = df.sort_values(by=sortby, ascending=False)
+    
+    return df.style.format({'Last': "{:.2f}%", 'Previous': "{:.2f}%", 'Change': "{:+.2f}%"})\
+            .background_gradient(cmap='RdYlGn', subset=list(df.drop(['Reference'], axis=1).columns))
+
+def inflation(continent, cat='', sortby='Last'):   
+    url1 = 'https://tradingeconomics.com/country-list/{}inflation-rate?continent={}'.format(cat, continent)
+    html1 = requests.get(url1).content
+    df_list1 = pd.read_html(html1)
+    df = df_list1[0].set_index('Country')
+    df['Change'] = df['Last'] - df['Previous']
+    df = df[['Last', 'Previous', 'Change', 'Reference', 'Unit']]
+    df.drop('Unit', axis=1, inplace=True)
+
+    df = df.sort_values(by=sortby, ascending=False)
+    
+    return df.style.format({'Last': "{:.2f}%", 'Previous': "{:.2f}%", 'Change': "{:+.2f}%"})\
+            .background_gradient(cmap='RdYlGn', vmax=7, subset=list(df.drop(['Reference'], axis=1).columns))
+
+def unemp(continent, sortby='Last'):   
+    url1 = 'https://tradingeconomics.com/country-list/unemployment-rate?continent={}'.format(continent)
+    html1 = requests.get(url1).content
+    df_list1 = pd.read_html(html1)
+    unemp = df_list1[0].set_index('Country')
+    unemp['Change'] = unemp['Last'] - unemp['Previous']
+    unemp = unemp[['Last', 'Previous', 'Change', 'Reference', 'Unit']]
+    unemp.drop('Unit', axis=1, inplace=True)
+
+    unemp = unemp.sort_values(by=sortby, ascending=True)
+    return unemp.style.format({'Last': "{:.2f}%", 'Previous': "{:.2f}%", 'Change': "{:+.2f}%"})\
+            .background_gradient(cmap='RdYlGn', subset=list(unemp.drop(['Reference'], axis=1).columns))

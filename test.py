@@ -265,17 +265,17 @@ def display_items(data, asset_class, cat):
 
 # Display the functions/analytics
 st.sidebar.header('User Input Parameters')
-side_options = st.sidebar.radio('Analytics App Contents', ('Cross Asset Data', 'ETF Details', 'Macroeconomic Data'))
+side_options = st.sidebar.radio('Analytics App Contents', ('Cross Asset Data', 'ETF Details', 'Economic Calendar', 'Macroeconomic Data', 'Country Macroeconomic Profile'))
 
 if side_options == 'ETF Details':
     def etf_details():
-        ticker_name = st.sidebar.text_input('Enter Ticker Name', value='URTH')
-        asset =  st.sidebar.selectbox('ETF Asset Class:', ('Equity/REIT ETF', 'Fixed Income ETF'))
+        ticker_name = st.text_input('Enter Ticker Name', value='URTH')
+        asset =  st.selectbox('ETF Asset Class:', ('Equity/REIT ETF', 'Fixed Income ETF'))
         if asset=='Equity/REIT ETF':
-            details = st.sidebar.selectbox('Select Data Type:', ('General Overview', 'Top 15 Holdings', 'Sector Exposure',
+            details = st.selectbox('Select Data Type:', ('General Overview', 'Top 15 Holdings', 'Sector Exposure',
                                     'Market Cap Exposure', 'Country Exposure', 'Asset Allocation'))
         elif asset=='Fixed Income ETF':
-            details = st.sidebar.selectbox('Select Data Type:', ('General Overview', 'Top 15 Holdings', 'Bond Sector Exposure',
+            details = st.selectbox('Select Data Type:', ('General Overview', 'Top 15 Holdings', 'Bond Sector Exposure',
                                     'Coupon Breakdown', 'Credit Quality Exposure', 'Maturity Profile'))
         return [ticker_name, details, asset]
 
@@ -322,28 +322,61 @@ elif side_options =='Cross Asset Data':
 
     elif asset_class=='World Indices':
         if st.checkbox('Show World Indices Map'):
+            st.subheader('World Equity Market USD Returns Heatmap (EOD)')
             ret_type = st.selectbox('Return Period: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)'))
             iso = pd.read_excel('World_Indices_List.xlsx', sheet_name='iso')
             iso.set_index('Country', inplace=True)
             data2 = etf.format_world_data(world_indices())[0].merge(iso['iso_alpha'], on='Country')
+            data2[['$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)']] = data2[['$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)']].round(4)*100
 
             df = data2
             fig1 = px.choropleth(df, locations="iso_alpha",
                                 color=ret_type,
                                 hover_name="Country",
                                 color_continuous_scale='RdYlGn')
-            fig1.update_layout(width=1000, height=650, title= 'World Equity Market USD Returns Heatmap (EOD)', font=dict(family="Segoe UI, monospace", size=13, color="#292828"))
+            fig1.update_layout(width=1000, height=650)
             st.plotly_chart(fig1)
 
         usd = st.selectbox('Currency: ', ('USD', 'Local Currency'))
         print(st.dataframe(etf.format_world_data(world_indices(), usd=usd)[1]))
         wdx = st.selectbox('Plot Data Type: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)'))
-        st.plotly_chart(world_id_plots(wdx))
+        st.plotly_chart(world_id_plots(wdx), width=2000, height=1500)
 
 elif side_options=='Macroeconomic Data':
-    st.subheader('World Manufacturing PMIs')
-    continent = st.selectbox('Select Continent', ('World', 'G20', 'America', 'Europe', 'Asia', 'Africa'))
-    st.dataframe(etf.world_pmis(continent=continent), width=1000, height=1500)
+     st.subheader('Macroeconomic Data')
+     cat = st.selectbox('Select Data Category: ', ('World Manufacturing PMIs', 'GDP', 'Retail Sales', 'Inflation', 'Unemployment'))
+     if cat == 'World Manufacturing PMIs':
+         st.subheader('World Manufacturing PMIs')
+         continent = st.selectbox('Select Continent', ('World', 'G20', 'America', 'Europe', 'Asia', 'Africa'))
+         st.dataframe(etf.world_pmis(continent=continent), width=1000, height=1500)
+     elif cat == 'GDP':
+         st.subheader('World GDP Data')
+         continent = st.selectbox('Select Continent', ('G20', 'World', 'America', 'Europe', 'Asia', 'Africa'))
+         st.dataframe(etf.gdp(continent=continent), width=1200, height=2000)
+     elif cat=='Retail Sales':
+         st.subheader('Retail Sales')
+         continent = st.selectbox('Select Continent', ('G20', 'World', 'America', 'Europe', 'Asia', 'Africa'))
+         time = st.selectbox('Select Period: ', ('YoY', 'MoM'))
+         st.dataframe(etf.retail(continent=continent, time=time), width=1200, height=2000)
+     elif cat == 'Inflation':
+         st.subheader('World Inflation Data')
+         continent = st.selectbox('Select Continent', ('G20', 'World', 'America', 'Europe', 'Asia', 'Africa'))
+         st.dataframe(etf.inflation(continent=continent), width=1200, height=2000)
+     elif cat == 'Unemployment':
+         st.subheader('World Unemployment Data')
+         continent = st.selectbox('Select Continent', ('G20', 'World', 'America', 'Europe', 'Asia', 'Africa'))
+         st.dataframe(etf.unemp(continent=continent), width=1200, height=2000)
+
+elif side_options == 'Economic Calendar':
+     st.subheader('Economic Calendar')
+     importances = st.multiselect('Importance: ', ['Low', 'Medium', 'High'], ['Medium', 'High'])
+     st.dataframe(etf.eco_calendar(importances=importances), width=2000, height=1200)
+
+elif side_options == 'Country Macroeconomic Profile':
+     st.subheader('Country Macroeconomic Profile')
+     countries_list = st.selectbox('Select Country: ', ["United-States", "Afghanistan","Albania","Algeria","Andorra","Angola","Antigua-and-Barbuda","Argentina","Armenia","Aruba","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bermuda","Bhutan","Bolivia","Bosnia-and-Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina-Faso","Burundi","Cambodia","Cameroon","Canada","Cape-Verde","Cayman-Islands","Central-African-Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa-Rica","Croatia","Cuba","Cyprus","Czech-Republic","Denmark","Djibouti","Dominica","Dominican-Republic","East-Timor","Ecuador","Egypt","El-Salvador","Equatorial-Guinea","Eritrea","Estonia","Ethiopia","Euro-Area","Faroe-Islands","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hong-Kong","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Isle-of-Man","Israel","Italy","Ivory-Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Macao","Macedonia","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Mauritania","Mauritius","Mexico","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nepal","Netherlands","New-Zealand","Nicaragua","Niger","Nigeria","North-Korea","Norway","Oman","Pakistan","Palestine","Panama","Paraguay","Peru","Philippines","Poland","Portugal","Puerto-Rico","Qatar","Republic-of-the-Congo","Romania","Russia","Rwanda","Sao-Tome-and-Principe","Saudi-Arabia","Senegal","Serbia","Seychelles","Sierra-Leone","Singapore","Slovakia","Slovenia","Somalia","South-Africa","South-Korea","South-Sudan","Spain","Sri-Lanka","Sudan","Suriname","Swaziland","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Togo","Trinidad-and-Tobago","Tunisia","Turkey","Turkmenistan","Uganda","Ukraine","United-Arab-Emirates","United-Kingdom","United-States","Uruguay","Uzbekistan","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"])
+     data_type = st.selectbox('Data Category: ', ['Overview', 'GDP', 'Labour', 'Inflation', 'Money', 'Trade', 'Government', 'Taxes', 'Business', 'Consumer'])
+     st.dataframe(etf.country_macros(country=countries_list, data_type=data_type), height=1200)
 
 
 st.sidebar.markdown('Developed by Harsh Shivlani')
