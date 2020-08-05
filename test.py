@@ -94,8 +94,8 @@ def import_data(asset_class):
                 df = df.join(hist_data(etf_list[asset_class][i], etf_list['Country'][i]), on='Date')
 
     #Forward fill for any missing days i.e. holidays
-    #df = df.iloc[:-1,:].ffill().dropna()
-    df = df[:yest].ffill().dropna()
+    df = df.iloc[:-1,:].ffill().dropna()
+    #df = df[:yest].ffill().dropna()
     df.index.name = 'Date'
     return df
 
