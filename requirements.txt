@@ -18,3 +18,5 @@ voila
 nsepy
 investpy
 streamlit
+bs4
+beautifulsoup4
