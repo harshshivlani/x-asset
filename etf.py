@@ -19,6 +19,10 @@ import investpy
 import plotly
 import plotly.graph_objects as go
 import plotly.express as px
+from bs4 import BeautifulSoup 
+import csv
+from plotly.subplots import make_subplots
+
 
 #notebook formatting
 from IPython.core.display import display, HTML
@@ -737,3 +741,211 @@ def unemp(continent, sortby='Last'):
     unemp = unemp.sort_values(by=sortby, ascending=True)
     return unemp.style.format({'Last': "{:.2f}%", 'Previous': "{:.2f}%", 'Change': "{:+.2f}%"})\
             .background_gradient(cmap='RdYlGn', subset=list(unemp.drop(['Reference'], axis=1).columns))
+
+
+def live_indices():
+    prices=[]
+    names=[]
+    changes=[]
+    percentChanges=[]
+    marketCaps=[]
+    totalVolumes=[]
+    circulatingSupplys=[]
+     
+    CryptoCurrenciesUrl = "https://in.finance.yahoo.com/world-indices"
+    r= requests.get(CryptoCurrenciesUrl)
+    data=r.text
+    soup=BeautifulSoup(data)
+     
+    counter = 40
+    for i in range(40, 404, 14):
+          for row in soup.find_all('tbody'):
+            for srow in row.find_all('tr'):
+                for name in srow.find_all('td', attrs={'class':'data-col1'}):
+                    names.append(name.text)
+                for price in srow.find_all('td', attrs={'class':'data-col2'}):
+                    prices.append(price.text)
+                for change in srow.find_all('td', attrs={'class':'data-col3'}):
+                    changes.append(change.text)
+                for percentChange in srow.find_all('td', attrs={'class':'data-col4'}):
+                    percentChanges.append(percentChange.text)
+     
+    df = pd.DataFrame({"Names": names, "Prices": prices, "Change": changes, "% Change": percentChanges}).drop_duplicates().set_index('Names')
+    df['% Change'] = pd.to_numeric(df['% Change'].str.strip('%'))
+    df.drop('CBOE Volatility Index', axis=0, inplace=True)
+    df = df.style.format({'% Change': "{:.2f}%"}).background_gradient(cmap='RdYlGn', subset=['% Change'])
+    return df
+
+def live_comds():
+    prices=[]
+    names=[]
+    changes=[]
+    percentChanges=[]
+    marketCaps=[]
+    marketTimes=[]
+    totalVolumes=[]
+    openInterests=[]
+
+    CryptoCurrenciesUrl = "https://in.finance.yahoo.com/commodities"
+    r= requests.get(CryptoCurrenciesUrl)
+    data=r.text
+    soup=BeautifulSoup(data)
+
+    counter = 40
+    for i in range(40, 404, 14):
+        for row in soup.find_all('tbody'):
+            for srow in row.find_all('tr'):
+                for name in srow.find_all('td', attrs={'class':'data-col1'}):
+                    names.append(name.text)
+                for price in srow.find_all('td', attrs={'class':'data-col2'}):
+                    prices.append(price.text)
+                for time in srow.find_all('td', attrs={'class':'data-col3'}):
+                    marketTimes.append(time.text)
+                for change in srow.find_all('td', attrs={'class':'data-col4'}):
+                    changes.append(change.text)
+                for percentChange in srow.find_all('td', attrs={'class':'data-col5'}):
+                    percentChanges.append(percentChange.text)
+                for volume in srow.find_all('td', attrs={'class':'data-col6'}):
+                    totalVolumes.append(volume.text)
+                for openInterest in srow.find_all('td', attrs={'class':'data-col7'}):
+                    openInterests.append(openInterest.text)
+
+    df = pd.DataFrame({"Names": names, "Prices": prices, "Change": changes, "% Change": percentChanges, "Market Time": marketTimes,'Open Interest': openInterests ,"Volume": totalVolumes}).drop_duplicates().set_index('Names')
+    df['% Change'] = pd.to_numeric(df['% Change'].str.strip('%'))
+    df = df.sort_values(by='% Change', ascending=False).style.format({'% Change': "{:.2f}%"}).background_gradient(cmap='RdYlGn', subset=['% Change'])
+    return df
+
+def live_curr():
+    names=[]
+    prices=[]
+    changes=[]
+    percentChanges=[]
+    marketCaps=[]
+    totalVolumes=[]
+    circulatingSupplys=[]
+
+    CryptoCurrenciesUrl = "https://in.finance.yahoo.com/currencies"
+    r= requests.get(CryptoCurrenciesUrl)
+    data=r.text
+    soup=BeautifulSoup(data)
+
+    counter = 40
+    for i in range(40, 404, 14):
+        for listing in soup.find_all('tr', attrs={'data-reactid':i}):
+            for name in listing.find_all('td', attrs={'data-reactid':i+3}):
+                 names.append(name.text)
+            for price in listing.find_all('td', attrs={'data-reactid':i+4}):
+                 prices.append(price.text)
+            for change in listing.find_all('td', attrs={'data-reactid':i+5}):
+                 changes.append(change.text)
+            for percentChange in listing.find_all('td', attrs={'data-reactid':i+7}):
+                 percentChanges.append(percentChange.text)
+    df = pd.DataFrame({"Names": names, "Prices": prices, "Change": changes, "% Change": percentChanges}).drop_duplicates().set_index('Names')
+    df['% Change'] = pd.to_numeric(df['% Change'].str.strip('%'))
+    df = df.sort_values(by='% Change', ascending=False).style.format({'% Change': "{:.2f}%"}).background_gradient(cmap='RdYlGn', subset=['% Change'])
+    return df
+
+
+def india_inds(industry='auto'):
+    prices=[]
+    names=[]
+    changes=[]
+    percentChanges=[]
+    marketCaps=[]
+    marketTimes=[]
+    totalVolumes=[]
+    openInterests=[]
+
+    CryptoCurrenciesUrl = "https://in.finance.yahoo.com/industries/" + str(industry)
+    r= requests.get(CryptoCurrenciesUrl)
+    data=r.text
+    soup=BeautifulSoup(data)
+
+    counter = 40
+    for i in range(40, 404, 14):
+        for row in soup.find_all('tbody'):
+            for srow in row.find_all('tr'):
+                for name in srow.find_all('td', attrs={'class':'data-col1'}):
+                    names.append(name.text)
+                for price in srow.find_all('td', attrs={'class':'data-col2'}):
+                    prices.append(price.text)
+                for time in srow.find_all('td', attrs={'class':'data-col3'}):
+                    marketTimes.append(time.text)
+                for change in srow.find_all('td', attrs={'class':'data-col4'}):
+                    changes.append(change.text)
+                for percentChange in srow.find_all('td', attrs={'class':'data-col5'}):
+                    percentChanges.append(percentChange.text)
+                for volume in srow.find_all('td', attrs={'class':'data-col6'}):
+                    totalVolumes.append(volume.text)
+                for openInterest in srow.find_all('td', attrs={'class':'data-col7'}):
+                    openInterests.append(openInterest.text)
+
+    df = pd.DataFrame({"Names": names, "Prices": prices, "Change": changes, "% Change": percentChanges, "Market Time": marketTimes,'Volume': openInterests ,"Avg Volume(3M)": totalVolumes}).drop_duplicates().set_index('Names')
+    df = df[df['Prices'] !='-']
+    df['% Change'] = pd.to_numeric(df['% Change'].str.strip('%'))
+    df = df.sort_values(by='% Change', ascending=False).style.format({'% Change': "{:.2f}%"}).background_gradient(cmap='RdYlGn', subset=['% Change'])
+    return df
+
+
+##FIXED INCOME - YIELD CURVES
+
+
+def yield_curve(country='United States'):    
+    df = investpy.bonds.get_bonds_overview(country=country)
+    df.set_index('name', inplace=True)
+    if country=='United States':
+        df.index = df.index.str.strip('U.S.')
+    elif country =='United Kingdom':
+        df.index = df.index.str.strip('U.K.')
+    else:
+        df.index = df.index.str.strip(country)
+    return df['last']
+    
+def show_yc():
+    us = yield_curve('United States')
+    uk = yield_curve('United Kingdom')
+    china = yield_curve('China')
+    aus = yield_curve('Australia')
+    germany = yield_curve('Germany')
+    japan = yield_curve('Japan')
+    can = yield_curve('Canada')
+    ind = yield_curve('India')
+    
+    fig = make_subplots(
+        rows=4, cols=2,
+        subplot_titles=("United States", "United Kingdom", "China", "Australia", "Germany", "Japan", "Canada", "India"))
+
+    fig.add_trace(go.Scatter(x=us.index, y=us, mode='lines+markers', name='US', line_shape='spline'),
+                  row=1, col=1)
+
+    fig.add_trace(go.Scatter(x=uk.index, y=uk, mode='lines+markers', name='UK', line_shape='spline'),
+                  row=1, col=2)
+
+    fig.add_trace(go.Scatter(x=china.index, y=china, mode='lines+markers', name='China', line_shape='spline'),
+                  row=2, col=1)
+
+    fig.add_trace(go.Scatter(x=aus.index, y=aus, mode='lines+markers', name='Australia', line_shape='spline'),
+                  row=2, col=2)
+
+    fig.add_trace(go.Scatter(x=germany.index, y=germany, mode='lines+markers', name='Germany', line_shape='spline'),
+                  row=3, col=1)
+
+    fig.add_trace(go.Scatter(x=japan.index, y=japan, mode='lines+markers', name='Japan', line_shape='spline'),
+                  row=3, col=2)
+
+    fig.add_trace(go.Scatter(x=can.index, y=can, mode='lines+markers', name='Canada', line_shape='spline'),
+                  row=4, col=1)
+
+    fig.add_trace(go.Scatter(x=ind.index, y=ind, mode='lines+markers', name='India', line_shape='spline'),
+                  row=4, col=2)
+
+    fig.update_layout(height=1600, width=1100,
+                      title_text="Global Sovereign Yield Curves")
+    fig.update_yaxes(title_text="Yield (%)", showgrid=True, zeroline=True, zerolinecolor='red', tickformat = '.3f')
+    fig.update_xaxes(title_text="Maturity (Yrs)")
+    fig.update_layout(font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f")
+                  ,plot_bgcolor = 'White', hovermode='x')
+    fig.update_traces(hovertemplate='Maturity: %{x} <br>Yield: %{y:.3f}%')
+    fig.update_yaxes(automargin=True)
+
+    return fig

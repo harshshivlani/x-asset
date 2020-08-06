@@ -18,6 +18,10 @@ import investpy
 from ipywidgets import interact, interact_manual
 #notebook formatting
 from IPython.core.display import display, HTML
+from bs4 import BeautifulSoup 
+import csv
+
+from yahooquery import Ticker
 
 
 st.write("""
@@ -32,6 +36,8 @@ one_yr = date.today() - datetime.timedelta(370)
 ytd = date.today() - offsets.YearBegin()
 year = date.today().year
 yest = date.today() - datetime.timedelta(1)
+now = datetime.datetime.now()
+now = now.strftime("%b %d, %Y %H:%M")
 
 tdy = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().year)
 oneyr = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().year-1)
@@ -94,8 +100,8 @@ def import_data(asset_class):
                 df = df.join(hist_data(etf_list[asset_class][i], etf_list['Country'][i]), on='Date')
 
     #Forward fill for any missing days i.e. holidays
-    df = df.iloc[:-1,:].ffill().dropna()
-    #df = df[:yest].ffill().dropna()
+    #df = df.iloc[:-1,:].ffill().dropna()
+    df = df[:yest].ffill().dropna()
     df.index.name = 'Date'
     return df
 
@@ -115,13 +121,20 @@ def import_data_yahoo(asset_class):
     df.index.name='Date'
 
     #download and merge all data
-    df1 = yf.download(list(etf_list['Ticker']), start=one_yr, progress=False)['Adj Close']
+    df1 = Ticker(list(etf_list['Ticker']), asynchronous=True).history(start=one_yr)['adjclose']
+    df1 = pd.DataFrame(df1).unstack().T.reset_index(0).drop('level_0', axis=1)
+    df1.index.name = 'Date'
+    df1.index = pd.to_datetime(df1.index)
     df = df.merge(df1, on='Date')
     #Forward fill for any missing days i.e. holidays
     df = df.ffill().dropna()
     df.index.name = 'Date'
     df.columns = list(etf_list[asset_class])
     return df
+
+@st.cache
+def yield_curves():
+    return etf.show_yc()
 
 #SORTED AND CONDITIONALLY FORMATTED RETURNS DATAFRAME
 def returns_hmap(data, cat, asset_class, sortby='1-Day'):
@@ -204,7 +217,7 @@ def format_inv(option):
 
 
 #Import all raw price data ready
-reits = import_data('REIT')
+reits = import_data_yahoo('REIT')
 worldeq = import_data_yahoo('World Equities')
 fixedinc = import_data_yahoo('Fixed Income')
 sectoral = import_data('Sectoral')
@@ -265,7 +278,7 @@ def display_items(data, asset_class, cat):
 
 # Display the functions/analytics
 st.sidebar.header('User Input Parameters')
-side_options = st.sidebar.radio('Analytics App Contents', ('Cross Asset Data', 'ETF Details', 'Economic Calendar', 'Macroeconomic Data', 'Country Macroeconomic Profile'))
+side_options = st.sidebar.radio('Analytics App Contents', ('Cross Asset Data', 'Live Cross Asset Summary Data', 'ETF Details', 'Economic Calendar', 'Macroeconomic Data', 'Country Macroeconomic Profile'))
 
 if side_options == 'ETF Details':
     def etf_details():
@@ -284,7 +297,7 @@ if side_options == 'ETF Details':
 
 elif side_options =='Cross Asset Data':
     def user_input_features():
-        asset_class = st.sidebar.selectbox("Select Asset Class:", ("World Indices", "World Equities", "Sectoral Equities", "Indian Equities", "Fixed Income", "REITs", "Currencies", "Commodities"))
+        asset_class = st.sidebar.selectbox("Select Asset Class:", ("World Indices", "World Equities", "Sectoral Equities", "Indian Equities", "Fixed Income","Global Yield Curves", "REITs", "Currencies", "Commodities"))
         return asset_class
 
     asset_class = user_input_features()
@@ -308,6 +321,9 @@ elif side_options =='Cross Asset Data':
         option = st.selectbox('Category: ', ('All Indian Indices', 'Indian Sectoral', 'Indian Strategy Indices'))
         st.write('**Note:** All returns are in INR')
         print(display_items(indiaeq, 'Indian Equities', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Securities'])))
+
+    elif asset_class=='Global Yield Curves':
+        st.plotly_chart(yield_curves())
 
     elif asset_class=='REITs':
         st.write('**Note:** All returns are in USD')
@@ -377,6 +393,30 @@ elif side_options == 'Country Macroeconomic Profile':
      countries_list = st.selectbox('Select Country: ', ["United-States", "Afghanistan","Albania","Algeria","Andorra","Angola","Antigua-and-Barbuda","Argentina","Armenia","Aruba","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bermuda","Bhutan","Bolivia","Bosnia-and-Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina-Faso","Burundi","Cambodia","Cameroon","Canada","Cape-Verde","Cayman-Islands","Central-African-Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa-Rica","Croatia","Cuba","Cyprus","Czech-Republic","Denmark","Djibouti","Dominica","Dominican-Republic","East-Timor","Ecuador","Egypt","El-Salvador","Equatorial-Guinea","Eritrea","Estonia","Ethiopia","Euro-Area","Faroe-Islands","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hong-Kong","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Isle-of-Man","Israel","Italy","Ivory-Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Macao","Macedonia","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Mauritania","Mauritius","Mexico","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nepal","Netherlands","New-Zealand","Nicaragua","Niger","Nigeria","North-Korea","Norway","Oman","Pakistan","Palestine","Panama","Paraguay","Peru","Philippines","Poland","Portugal","Puerto-Rico","Qatar","Republic-of-the-Congo","Romania","Russia","Rwanda","Sao-Tome-and-Principe","Saudi-Arabia","Senegal","Serbia","Seychelles","Sierra-Leone","Singapore","Slovakia","Slovenia","Somalia","South-Africa","South-Korea","South-Sudan","Spain","Sri-Lanka","Sudan","Suriname","Swaziland","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Togo","Trinidad-and-Tobago","Tunisia","Turkey","Turkmenistan","Uganda","Ukraine","United-Arab-Emirates","United-Kingdom","United-States","Uruguay","Uzbekistan","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"])
      data_type = st.selectbox('Data Category: ', ['Overview', 'GDP', 'Labour', 'Inflation', 'Money', 'Trade', 'Government', 'Taxes', 'Business', 'Consumer'])
      st.dataframe(etf.country_macros(country=countries_list, data_type=data_type), height=1200)
+
+elif side_options == 'Live Cross Asset Summary Data':
+    st.subheader('Updated Cross Asset Market Performance')
+    cat = st.selectbox('Asset Class: ', ('World Indices', 'Industry Stocks: India', 'Commodities', 'Currencies'))
+    st.write('As of ' + str(now))
+    if cat=='World Indices':
+        st.dataframe(etf.live_indices(), height=1000)
+
+    elif cat=='Industry Stocks: India':
+
+        inv = {'energy':'Energy', 'financial': 'Financial', 'healthcare':'Healthcare', 'technology': 'IT','telecom_utilities': 'Telecom & Utilities',
+         'fmcg':'FMCG', 'realty': 'Realty', 'manufacturing_materials': 'Basic Materials', 'consumer_durables':'Consumer Durables',
+          'industrials': 'Industrials', 'power':'Power', 'auto':'Auto'}
+        def format_inv(option):
+            return inv[option]
+
+        inds = st.selectbox('Industry: ',list(inv.keys()), index=0, format_func = format_inv)
+        st.dataframe(etf.india_inds(industry=inds), height=1000, width=1000)
+
+    elif cat=='Commodities':
+        st.dataframe(etf.live_comds(), height=1300, width=1300)
+
+    elif cat=='Currencies':
+        st.dataframe(etf.live_curr(), height=1300, width=1300)        
 
 
 st.sidebar.markdown('Developed by Harsh Shivlani')
