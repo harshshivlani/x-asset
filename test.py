@@ -20,8 +20,8 @@ from ipywidgets import interact, interact_manual
 from IPython.core.display import display, HTML
 from bs4 import BeautifulSoup 
 import csv
-
 from yahooquery import Ticker
+from plotly.subplots import make_subplots
 
 
 st.write("""
@@ -132,9 +132,154 @@ def import_data_yahoo(asset_class):
     df.columns = list(etf_list[asset_class])
     return df
 
+
 @st.cache
-def yield_curves():
-    return etf.show_yc()
+def show_yc():
+    def yield_curve(country='United States'):    
+        df = investpy.bonds.get_bonds_overview(country=country)
+        df.set_index('name', inplace=True)
+        if country=='United States':
+            df.index = df.index.str.strip('U.S.')
+        elif country =='United Kingdom':
+            df.index = df.index.str.strip('U.K.')
+        else:
+            df.index = df.index.str.strip(country)
+        return df['last']
+
+    us = yield_curve('United States')
+    uk = yield_curve('United Kingdom')
+    china = yield_curve('China')
+    aus = yield_curve('Australia')
+    germany = yield_curve('Germany')
+    japan = yield_curve('Japan')
+    can = yield_curve('Canada')
+    ind = yield_curve('India')
+    italy = yield_curve('Italy')
+    france = yield_curve('France')
+    rus = yield_curve('Russia')
+    phil = yield_curve('Philippines')
+    thai = yield_curve('Thailand')
+    brazil = yield_curve('Brazil')
+    
+    fig = make_subplots(
+        rows=7, cols=2,
+        subplot_titles=("United States", "United Kingdom", "China", "Australia", "Germany", "Japan", "Canada", "India", "Italy", "France", "Russia", "Philippines", "Thailand", "Brazil"))
+
+    fig.add_trace(go.Scatter(x=us.index, y=us, mode='lines+markers', name='US', line_shape='spline'),
+                  row=1, col=1)
+
+    fig.add_trace(go.Scatter(x=uk.index, y=uk, mode='lines+markers', name='UK', line_shape='spline'),
+                  row=1, col=2)
+
+    fig.add_trace(go.Scatter(x=china.index, y=china, mode='lines+markers', name='China', line_shape='spline'),
+                  row=2, col=1)
+
+    fig.add_trace(go.Scatter(x=aus.index, y=aus, mode='lines+markers', name='Australia', line_shape='spline'),
+                  row=2, col=2)
+
+    fig.add_trace(go.Scatter(x=germany.index, y=germany, mode='lines+markers', name='Germany', line_shape='spline'),
+                  row=3, col=1)
+
+    fig.add_trace(go.Scatter(x=japan.index, y=japan, mode='lines+markers', name='Japan', line_shape='spline'),
+                  row=3, col=2)
+
+    fig.add_trace(go.Scatter(x=can.index, y=can, mode='lines+markers', name='Canada', line_shape='spline'),
+                  row=4, col=1)
+
+    fig.add_trace(go.Scatter(x=ind.index, y=ind, mode='lines+markers', name='India', line_shape='spline'),
+                  row=4, col=2)
+
+    fig.add_trace(go.Scatter(x=italy.index, y=italy, mode='lines+markers', name='Italy', line_shape='spline'),
+                  row=5, col=1)
+
+    fig.add_trace(go.Scatter(x=france.index, y=france, mode='lines+markers', name='France', line_shape='spline'),
+                  row=5, col=2)
+
+    fig.add_trace(go.Scatter(x=brazil.index, y=brazil, mode='lines+markers', name='Brazil', line_shape='spline'),
+                  row=6, col=1)
+
+    fig.add_trace(go.Scatter(x=thai.index, y=thai, mode='lines+markers', name='Thailand', line_shape='spline'),
+                  row=6, col=2)
+
+    fig.add_trace(go.Scatter(x=phil.index, y=phil, mode='lines+markers', name='Philippines', line_shape='spline'),
+                  row=7, col=1)
+
+    fig.add_trace(go.Scatter(x=rus.index, y=rus, mode='lines+markers', name='Russia', line_shape='spline'),
+                  row=7, col=2)
+
+    fig.update_layout(height=2500, width=1200,
+                      title_text="Global Sovereign Yield Curves")
+    fig.update_yaxes(title_text="Yield (%)", showgrid=True, zeroline=True, zerolinecolor='red', tickformat = '.3f')
+    fig.update_xaxes(title_text="Maturity (Yrs)")
+    fig.update_layout(font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f")
+                  ,plot_bgcolor = 'White', hovermode='x')
+    fig.update_traces(hovertemplate='Maturity: %{x} <br>Yield: %{y:.3f}%')
+    fig.update_yaxes(automargin=True)
+
+    return fig
+
+
+@st.cache(allow_output_mutation=True)
+def global_yields(countries=['U.S.', 'Germany', 'U.K.', 'Italy', 'France', 'Canada', 'China', 'Australia', 'Japan', 'India', 'Russia', 'Brazil', 'Philippines', 'Thailand']):
+    """
+    
+    """
+    tdy = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().year)
+    oneyr = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().year-1)
+    
+    tens = pd.DataFrame(index=pd.bdate_range(start=oneyr, end=date.today()))
+    tens.index.name='Date'
+
+    fives = pd.DataFrame(index=pd.bdate_range(start=oneyr, end=date.today()))
+    fives.index.name='Date'
+
+    twos = pd.DataFrame(index=pd.bdate_range(start=oneyr, end=date.today()))
+    twos.index.name='Date'
+
+    def ytm(country, maturity):
+        df = pd.DataFrame(investpy.get_bond_historical_data(bond= str(country)+' '+str(maturity), from_date=oneyr, to_date=tdy)['Close'])
+        df.columns = [str(country)]
+        df.index = pd.to_datetime(df.index)
+        return pd.DataFrame(df)
+
+    cntry = countries
+    
+    for i in range(len(cntry)):
+                tens = tens.merge(ytm(cntry[i], '10Y'), on='Date')
+    for i in range(len(cntry)):
+                fives = fives.merge(ytm(cntry[i], '5Y'), on='Date')
+    for i in range(len(cntry)):
+                twos = twos.merge(ytm(cntry[i], '2Y'), on='Date')
+      
+    ytd = date.today() - offsets.YearBegin()
+    #10 Year
+    teny = pd.DataFrame(data= (tens.iloc[-1,:], tens.diff(1).iloc[-1,:]*100, tens.diff(1).iloc[-5,:]*100, (tens.iloc[-1,:] - tens[ytd:].iloc[0,:])*100, (tens.iloc[-1,:]-tens.iloc[0,:])*100))
+    teny = teny.T
+    cols = [('10Y', 'Yield'),('10Y', '1 Day'), ('10Y', '1 Week'), ('10Y', 'YTD'), ('10Y', '1 Year')]
+    teny.columns = pd.MultiIndex.from_tuples(cols)
+    teny.index.name='Countries'
+    
+    #5 Year
+    fivey = pd.DataFrame(data= (fives.iloc[-1,:], fives.diff(1).iloc[-1,:]*100, fives.diff(1).iloc[-6,:]*100,(fives.iloc[-1,:] - fives[ytd:].iloc[0,:])*100, (fives.iloc[-1,:]-fives.iloc[0,:])*100))
+    fivey = fivey.T
+    cols = [('5Y', 'Yield'),('5Y', '1 Day'), ('5Y', '1 Week'), ('5Y', 'YTD'), ('5Y', '1 Year')]
+    fivey.columns = pd.MultiIndex.from_tuples(cols)
+    fivey.index.name='Countries'
+    
+    #2 Year
+    twoy = pd.DataFrame(data= (twos.iloc[-1,:], twos.diff(1).iloc[-1,:]*100, twos.diff(1).iloc[-6,:]*100, (twos.iloc[-1,:] - twos[ytd:].iloc[0,:])*100, (twos.iloc[-1,:]-twos.iloc[0,:])*100))
+    twoy = twoy.T
+    cols = [('2Y', 'Yield'),('2Y', '1 Day'), ('2Y', '1 Week'), ('2Y', 'YTD'), ('2Y', '1 Year')]
+    twoy.columns = pd.MultiIndex.from_tuples(cols)
+    twoy.index.name='Countries'
+    
+    yields = twoy.merge(fivey, on='Countries').merge(teny, on='Countries')
+    
+    data = yields.style.format('{0:,.3f}%', subset=[('2Y', 'Yield'), ('5Y', 'Yield'), ('10Y', 'Yield')])\
+            .background_gradient(cmap='RdYlGn_r', subset=list(yields.columns.drop(('2Y', 'Yield')).drop(('5Y', 'Yield')).drop(('10Y', 'Yield')))).set_precision(2)
+    return data
+
+
 
 #SORTED AND CONDITIONALLY FORMATTED RETURNS DATAFRAME
 def returns_hmap(data, cat, asset_class, sortby='1-Day'):
@@ -323,7 +468,14 @@ elif side_options =='Cross Asset Data':
         print(display_items(indiaeq, 'Indian Equities', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Securities'])))
 
     elif asset_class=='Global Yield Curves':
-        st.plotly_chart(yield_curves())
+        opt = st.selectbox('Data Type: ', ('Global Yields Table', 'Yield Curve Charts'))
+        if opt=='Yield Curve Charts':
+            st.write('As of '+str(now))
+            st.plotly_chart(show_yc())
+        else:
+            st.write('Global Sovereign Yields: 2 Year, 5 Year and 10 Year Maturity')
+            st.write('Note: Yields are denoted in % terms. Change is denoted in basis points (bps)')
+            st.dataframe(global_yields(), width=1500, height=1000)
 
     elif asset_class=='REITs':
         st.write('**Note:** All returns are in USD')

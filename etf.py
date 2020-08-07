@@ -22,6 +22,7 @@ import plotly.express as px
 from bs4 import BeautifulSoup 
 import csv
 from plotly.subplots import make_subplots
+from pandas.tseries import offsets
 
 
 #notebook formatting
@@ -949,3 +950,63 @@ def show_yc():
     fig.update_yaxes(automargin=True)
 
     return fig
+
+
+def global_yields(countries=['U.S.', 'Germany', 'U.K.', 'Canada', 'Australia', 'Japan', 'India']):
+    """
+    
+    """
+    tdy = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().year)
+    oneyr = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().year-1)
+    
+    tens = pd.DataFrame(index=pd.bdate_range(start=oneyr, end=date.today()))
+    tens.index.name='Date'
+
+    fives = pd.DataFrame(index=pd.bdate_range(start=oneyr, end=date.today()))
+    fives.index.name='Date'
+
+    twos = pd.DataFrame(index=pd.bdate_range(start=oneyr, end=date.today()))
+    twos.index.name='Date'
+
+    def ytm(country, maturity):
+        df = pd.DataFrame(investpy.get_bond_historical_data(bond= str(country)+' '+str(maturity), from_date=oneyr, to_date=tdy)['Close'])
+        df.columns = [str(country)]
+        df.index = pd.to_datetime(df.index)
+        return pd.DataFrame(df)
+
+    cntry = countries
+    
+    for i in range(len(cntry)):
+                tens = tens.merge(ytm(cntry[i], '10Y'), on='Date')
+    for i in range(len(cntry)):
+                fives = fives.merge(ytm(cntry[i], '5Y'), on='Date')
+    for i in range(len(cntry)):
+                twos = twos.merge(ytm(cntry[i], '2Y'), on='Date')
+      
+    ytd = date.today() - offsets.YearBegin()
+    #10 Year
+    teny = pd.DataFrame(data= (tens.iloc[-1,:], tens.diff(1).iloc[-1,:]*100, tens.diff(1).iloc[-5,:]*100, (tens.iloc[-1,:] - tens[ytd:].iloc[0,:])*100, (tens.iloc[-1,:]-tens.iloc[0,:])*100))
+    teny = teny.T
+    cols = [('10Y', 'Yield'),('10Y', '1 Day'), ('10Y', '1 Week'), ('10Y', 'YTD'), ('10Y', '1 Year')]
+    teny.columns = pd.MultiIndex.from_tuples(cols)
+    teny.index.name='Countries'
+    
+    #5 Year
+    fivey = pd.DataFrame(data= (fives.iloc[-1,:], fives.diff(1).iloc[-1,:]*100, fives.diff(1).iloc[-6,:]*100,(fives.iloc[-1,:] - fives[ytd:].iloc[0,:])*100, (fives.iloc[-1,:]-fives.iloc[0,:])*100))
+    fivey = fivey.T
+    cols = [('5Y', 'Yield'),('5Y', '1 Day'), ('5Y', '1 Week'), ('5Y', 'YTD'), ('5Y', '1 Year')]
+    fivey.columns = pd.MultiIndex.from_tuples(cols)
+    fivey.index.name='Countries'
+    
+    #2 Year
+    twoy = pd.DataFrame(data= (twos.iloc[-1,:], twos.diff(1).iloc[-1,:]*100, twos.diff(1).iloc[-6,:]*100, (twos.iloc[-1,:] - twos[ytd:].iloc[0,:])*100, (twos.iloc[-1,:]-twos.iloc[0,:])*100))
+    twoy = twoy.T
+    cols = [('2Y', 'Yield'),('2Y', '1 Day'), ('2Y', '1 Week'), ('2Y', 'YTD'), ('2Y', '1 Year')]
+    twoy.columns = pd.MultiIndex.from_tuples(cols)
+    twoy.index.name='Countries'
+    
+    yields = twoy.merge(fivey, on='Countries').merge(teny, on='Countries')
+    
+    data = yields.style.format('{0:,.3f}%', subset=[('2Y', 'Yield'), ('5Y', 'Yield'), ('10Y', 'Yield')])\
+            .background_gradient(cmap='RdYlGn', subset=list(yields.columns.drop(('2Y', 'Yield')).drop(('5Y', 'Yield')).drop(('10Y', 'Yield')))).set_precision(2)
+    return data
