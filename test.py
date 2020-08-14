@@ -132,19 +132,19 @@ def import_data_yahoo(asset_class):
     df.columns = list(etf_list[asset_class])
     return df
 
+def yield_curve(country='United States'):    
+    df = investpy.bonds.get_bonds_overview(country=country)
+    df.set_index('name', inplace=True)
+    if country=='United States':
+        df.index = df.index.str.strip('U.S.')
+    elif country =='United Kingdom':
+        df.index = df.index.str.strip('U.K.')
+    else:
+        df.index = df.index.str.strip(country)
+    return df['last']
 
 @st.cache
 def show_yc():
-    def yield_curve(country='United States'):    
-        df = investpy.bonds.get_bonds_overview(country=country)
-        df.set_index('name', inplace=True)
-        if country=='United States':
-            df.index = df.index.str.strip('U.S.')
-        elif country =='United Kingdom':
-            df.index = df.index.str.strip('U.K.')
-        else:
-            df.index = df.index.str.strip(country)
-        return df['last']
 
     us = yield_curve('United States')
     uk = yield_curve('United Kingdom')
@@ -418,7 +418,68 @@ def display_items(data, asset_class, cat):
 
 
 ## MACRO DATA ANALYTICS
-
+def live_charts():
+    javascript = """ 
+            <!-- TradingView Widget BEGIN -->
+            <div class="tradingview-widget-container">
+              <div id="tradingview_f2138"></div>
+              <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/symbols/NASDAQ-IEF/" rel="noopener" target="_blank"><span class="blue-text">IEF Chart</span></a> by TradingView</div>
+              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+              <script type="text/javascript">
+              new TradingView.widget(
+              {
+              "width": 980,
+              "height": 610,
+              "symbol": "NASDAQ:IEF",
+              "interval": "D",
+              "timezone": "Asia/Kolkata",
+              "theme": "light",
+              "style": "1",
+              "locale": "en",
+              "toolbar_bg": "#f1f3f6",
+              "enable_publishing": false,
+              "hide_side_toolbar": false,
+              "allow_symbol_change": true,
+              "watchlist": [
+                "AMEX:HYG",
+                "NASDAQ:EMB",
+                "AMEX:EMLC",
+                "AMEX:LQD",
+                "NASDAQ:TLT",
+                "AMEX:MUB",
+                "AMEX:TIP",
+                "AMEX:HYXU",
+                "AMEX:SRLN",
+                "AMEX:BWX",
+                "NASDAQ:SHY",
+                "AMEX:HYD",
+                "AMEX:HYEM",
+                "AMEX:EMHY",
+                "AMEX:AGG",
+                "AMEX:AGZ",
+                "NASDAQ:VCSH",
+                "AMEX:IGHG",
+                "NASDAQ:IGOV",
+                "AMEX:BKLN",
+                "AMEX:SHYG",
+                "NASDAQ:ANGL",
+                "NASDAQ:FALN",
+                "NASDAQ:USIG",
+                "NASDAQ:VCLT",
+                "AMEX:EDV",
+                "AMEX:TMF",
+                "NASDAQ:BNDX",
+                "AMEX:TFI"
+              ],
+              "details": true,
+              "container_id": "tradingview_f2138"
+            }
+              );
+              </script>
+            </div>
+            <!-- TradingView Widget END -->
+            """
+    return components.html(javascript, height=650)
 
 
 # Display the functions/analytics
@@ -448,6 +509,7 @@ elif side_options =='Cross Asset Data':
     asset_class = user_input_features()
     st.header(asset_class)
     if asset_class=="Fixed Income":
+        live_charts()
         option = st.selectbox('Category: ', ('All Fixed Income', 'Sovereign Fixed Income', 'Corporate Credit', 'High Yield', 'Municipals'))
         st.write('**Note:** All returns are in USD')
         print(display_items(fixedinc, 'Fixed Income', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Securities'])))
