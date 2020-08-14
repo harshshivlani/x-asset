@@ -42,6 +42,8 @@ now = now.strftime("%b %d, %Y %H:%M")
 tdy = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().year)
 oneyr = str(date.today().day)+'/'+str(date.today().month)+'/'+str(date.today().year-1)
 
+components.iframe("https://harshshivlani.github.io/x-asset/liveticker")
+
 #Define function to fetch historical data from Investing.com
 def hist_data(name, country):
     df = investpy.get_etf_historical_data(etf=name, country=country, from_date=oneyr, to_date=tdy)['Close']
@@ -417,71 +419,11 @@ def display_items(data, asset_class, cat):
 
 
 
-## MACRO DATA ANALYTICS
-def live_charts():
-    javascript = """ 
-            <!-- TradingView Widget BEGIN -->
-            <div class="tradingview-widget-container">
-              <div id="tradingview_f2138"></div>
-              <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/symbols/NASDAQ-IEF/" rel="noopener" target="_blank"><span class="blue-text">IEF Chart</span></a> by TradingView</div>
-              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-              <script type="text/javascript">
-              new TradingView.widget(
-              {
-              "width": 980,
-              "height": 610,
-              "symbol": "NASDAQ:IEF",
-              "interval": "D",
-              "timezone": "Asia/Kolkata",
-              "theme": "light",
-              "style": "1",
-              "locale": "en",
-              "toolbar_bg": "#f1f3f6",
-              "enable_publishing": false,
-              "hide_side_toolbar": false,
-              "allow_symbol_change": true,
-              "watchlist": [
-                "AMEX:HYG",
-                "NASDAQ:EMB",
-                "AMEX:EMLC",
-                "AMEX:LQD",
-                "NASDAQ:TLT",
-                "AMEX:MUB",
-                "AMEX:TIP",
-                "AMEX:HYXU",
-                "AMEX:SRLN",
-                "AMEX:BWX",
-                "NASDAQ:SHY",
-                "AMEX:HYD",
-                "AMEX:HYEM",
-                "AMEX:EMHY",
-                "AMEX:AGG",
-                "AMEX:AGZ",
-                "NASDAQ:VCSH",
-                "AMEX:IGHG",
-                "NASDAQ:IGOV",
-                "AMEX:BKLN",
-                "AMEX:SHYG",
-                "NASDAQ:ANGL",
-                "NASDAQ:FALN",
-                "NASDAQ:USIG",
-                "NASDAQ:VCLT",
-                "AMEX:EDV",
-                "AMEX:TMF",
-                "NASDAQ:BNDX",
-                "AMEX:TFI"
-              ],
-              "details": true,
-              "container_id": "tradingview_f2138"
-            }
-              );
-              </script>
-            </div>
-            <!-- TradingView Widget END -->
-            """
-    return components.html(javascript, height=650)
+## MACRO DATA ANALYTICS 
+        
 
 
+    
 # Display the functions/analytics
 st.sidebar.header('User Input Parameters')
 side_options = st.sidebar.radio('Analytics App Contents', ('Cross Asset Data', 'Live Cross Asset Summary Data', 'ETF Details', 'Economic Calendar', 'Macroeconomic Data', 'Country Macroeconomic Profile'))
@@ -509,17 +451,24 @@ elif side_options =='Cross Asset Data':
     asset_class = user_input_features()
     st.header(asset_class)
     if asset_class=="Fixed Income":
-        live_charts()
+        if st.checkbox('Show Live Chart'):
+            components.iframe("https://harshshivlani.github.io/x-asset/fixedinc-chart", height=650)
         option = st.selectbox('Category: ', ('All Fixed Income', 'Sovereign Fixed Income', 'Corporate Credit', 'High Yield', 'Municipals'))
         st.write('**Note:** All returns are in USD')
         print(display_items(fixedinc, 'Fixed Income', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Securities'])))
 
     elif asset_class=='World Equities':
+        if st.checkbox('Show Live Data'):
+            components.iframe("https://harshshivlani.github.io/x-asset/indices", height=650)
+        if st.checkbox('Show Live Chart'):
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
         option = st.selectbox('Category: ', ('All Countries', 'Emerging Markets', 'Asia', 'G10', 'Europe', 'Commodity Linked'))
         st.write('**Note:** All returns are in USD')
         print(display_items(worldeq, 'World Equities', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Countries'])))
 
     elif asset_class=='Sectoral Equities':
+        if st.checkbox('Show Live Chart'):
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
         option = st.selectbox('Category: ', ('United States', 'Eurozone', 'China', 'Canada', 'Australia'))
         st.write('**Note:** Sectoral Equity ETF Returns are in local currency, except China and US ETFs which are in USD')
         print(display_items(sectoral, 'Sectoral',  cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Sectors'])))
@@ -540,13 +489,23 @@ elif side_options =='Cross Asset Data':
             st.dataframe(global_yields(), width=1500, height=1000)
 
     elif asset_class=='REITs':
+        if st.checkbox('Show Live Chart'):
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
         st.write('**Note:** All returns are in USD')
         print(display_items(reits, 'REIT', cat=list(reits.columns)))
 
     elif asset_class=='Currencies':
+        if st.checkbox('Show Live Data'):
+            components.iframe("https://harshshivlani.github.io/x-asset/cur", height=650)
+        if st.checkbox('Show Live Chart'):
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
         print(display_items(fx, 'Currencies', cat=list(fx.columns)))
 
     elif asset_class=='Commodities':
+        if st.checkbox('Show Live Data'):
+            components.iframe("https://harshshivlani.github.io/x-asset/comd", height=650)
+        if st.checkbox('Show Live Chart'):
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
         st.write('**Note:** All returns are in USD')
         print(display_items(comd, 'Commodities', cat=list(comd.columns)))
 
@@ -567,6 +526,13 @@ elif side_options =='Cross Asset Data':
             fig1.update_layout(width=1000, height=650)
             st.plotly_chart(fig1)
 
+        if st.checkbox('Show Live Markets'):
+            components.iframe("https://harshshivlani.github.io/x-asset/indices", height=500)
+
+        if st.checkbox('Show Live Chart'):
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
+        
+        st.subheader("Multi-TimeFrame Return Table:")
         usd = st.selectbox('Currency: ', ('USD', 'Local Currency'))
         print(st.dataframe(etf.format_world_data(world_indices(), usd=usd)[1]))
         wdx = st.selectbox('Plot Data Type: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)'))
@@ -599,8 +565,9 @@ elif side_options=='Macroeconomic Data':
 
 elif side_options == 'Economic Calendar':
      st.subheader('Economic Calendar')
-     importances = st.multiselect('Importance: ', ['Low', 'Medium', 'High'], ['Medium', 'High'])
-     st.dataframe(etf.eco_calendar(importances=importances), width=2000, height=1200)
+     components.iframe("https://harshshivlani.github.io/x-asset/ecocalendar", height=650)
+     #importances = st.multiselect('Importance: ', ['Low', 'Medium', 'High'], ['Medium', 'High'])
+     #st.dataframe(etf.eco_calendar(importances=importances), width=2000, height=1200)
 
 elif side_options == 'Country Macroeconomic Profile':
      st.subheader('Country Macroeconomic Profile')
