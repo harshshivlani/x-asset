@@ -464,18 +464,26 @@ def updated_world_indices(category='Major'):
 
     return testa
 
-def format_world_data(testa, usd='USD'):
-    if usd=='USD':
-        testa = testa[['Country', 'Price (EOD)', '$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)']]
-        testa = testa.sort_values('$ 1D Chg (%)', ascending=False)
-        formatted = testa.style.format({'Price (EOD)': "{:.2f}", '$ 1D Chg (%)': "{:.2%}", '$ 1W Chg (%)': "{:.2%}", '$ 1M Chg (%)': "{:.2%}", '$ Chg YTD (%)': "{:.2%}"})\
-                         .background_gradient(cmap='RdYlGn', subset=list(testa.drop(['Price (EOD)','Country'], axis=1).columns))
+def format_world_data(testa, usd='USD', country='No'):
+    if country == 'Yes':
+        if usd=='USD':
+            testa = testa[['Country', 'Price (EOD)', '$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)']]
+        else:
+            testa = testa[['Country', 'Price (EOD)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)']]
+        testa.columns = ['Country', 'Price', '1-Day', '1-Week', '1-Month', 'YTD']
+        testa = testa.sort_values('1-Day', ascending=False)
+        formatted = testa.style.format({'Price': "{:.2f}", '1-Day': "{:.2%}", '1-Week': "{:.2%}", '1-Month': "{:.2%}", 'YTD': "{:.2%}"})\
+                         .background_gradient(cmap='RdYlGn', subset=list(testa.drop(['Price','Country'], axis=1).columns))
+    
     else:
-        testa = testa[['Country', 'Price (EOD)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)']]
-        testa = testa.sort_values('1D Chg (%)', ascending=False)
-        formatted = testa.style.format({'Price (EOD)': "{:.2f}", '1D Chg (%)': "{:.2%}", '1W Chg (%)': "{:.2%}", '1M Chg (%)': "{:.2%}", 'Chg YTD (%)': "{:.2%}"})\
-                         .background_gradient(cmap='RdYlGn', subset=list(testa.drop(['Price (EOD)','Country'], axis=1).columns))
-        
+        if usd=='USD':
+            testa = testa[['Price (EOD)', '$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)']]
+        else:
+            testa = testa[['Price (EOD)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)']]
+        testa.columns = ['Price', '1-Day', '1-Week', '1-Month', 'YTD']
+        testa = testa.sort_values('1-Day', ascending=False)
+        formatted = testa.style.format({'Price': "{:.2f}", '1-Day': "{:.2%}", '1-Week': "{:.2%}", '1-Month': "{:.2%}", 'YTD': "{:.2%}"})\
+                         .background_gradient(cmap='RdYlGn', subset=list(testa.drop(['Price'], axis=1).columns))
     return testa, formatted
 
 

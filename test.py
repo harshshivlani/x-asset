@@ -32,7 +32,7 @@ from pandas.tseries import offsets
 one_m = date.today() - datetime.timedelta(30)
 three_m = date.today() - datetime.timedelta(90)
 six_m = date.today() - datetime.timedelta(120)
-one_yr = date.today() - datetime.timedelta(370)
+one_yr = date.today() - datetime.timedelta(500)
 ytd = date.today() - offsets.YearBegin()
 year = date.today().year
 yest = date.today() - datetime.timedelta(1)
@@ -284,7 +284,7 @@ def global_yields(countries=['U.S.', 'Germany', 'U.K.', 'Italy', 'France', 'Cana
 
 
 #SORTED AND CONDITIONALLY FORMATTED RETURNS DATAFRAME
-def returns_hmap(data, cat, asset_class, sortby='1-Day'):
+def returns_hmap(data, cat, asset_class, start=date(2020,3,23), end=date.today(), sortby='1-Day'):
     """
     data = Price Data for the ETFs (dataframe)
     asset_class = asset class of the ETF (str)
@@ -293,9 +293,9 @@ def returns_hmap(data, cat, asset_class, sortby='1-Day'):
     st.subheader("Multi Timeframe Returns of " + str(asset_class) + " ETFs")
     st.markdown("Data as of :  " + str(data.index[-1].strftime("%b %d, %Y")))
     df = pd.DataFrame(data = (data.pct_change(1).iloc[-1,:], data.pct_change(5).iloc[-1,:], data.pct_change(21).iloc[-1,:],
-                              data.pct_change(63).iloc[-1,:], data[str(year):].iloc[-1,:]/data[str(year):].iloc[0,:]-1, data[str(year):].iloc[-1,:]/data['2020-03-23':].iloc[0,:]-1,
+                              data.pct_change(63).iloc[-1,:], data[str(year):].iloc[-1,:]/data[str(year):].iloc[0,:]-1, data[start:end].iloc[-1,:]/data[start:end].iloc[0,:]-1,
                               data.pct_change(126).iloc[-1,:], data.pct_change(252).iloc[-1,:], drawdowns(data)))
-    df.index = ['1-Day', '1-Week', '1-Month', '3-Month', 'YTD', 'From 23rd March', '6-Month', '1-Year', 'Drawdowns']
+    df.index = ['1-Day', '1-Week', '1-Month', '3-Month', 'YTD', 'Custom', '6-Month', '1-Year', 'Max DD']
     df_perf = (df.T*100)
     df_perf.index.name = asset_class
 
@@ -308,12 +308,19 @@ def returns_hmap(data, cat, asset_class, sortby='1-Day'):
                      .background_gradient(cmap='RdYlGn')\
                      .set_properties(**{'font-size': '10pt',})
     else:
-        tickers = pd.DataFrame(etf_list['Ticker'])
-        tickers.index = etf_list[asset_class]
-        df2 = tickers.merge(df_perf, on=asset_class)
-        df2  = df2.sort_values(by=sortby, ascending=False)
-        df2 = df2.round(2).style.format('{0:,.2f}%', subset=list(df2.drop(['Ticker'], axis=1).columns))\
+        if st.checkbox("Show Tickers"):
+            tickers = pd.DataFrame(etf_list['Ticker'])
+            tickers.index = etf_list[asset_class]
+            df2 = tickers.merge(df_perf, on=asset_class)
+            df2  = df2.sort_values(by=sortby, ascending=False)
+            df2 = df2.round(2).style.format('{0:,.2f}%', subset=list(df2.drop(['Ticker'], axis=1).columns))\
                      .background_gradient(cmap='RdYlGn', subset=(df2.drop(['Ticker'], axis=1).columns))\
+                     .set_properties(**{'font-size': '10pt',})
+        else: 
+            df2 = df_perf
+            df2  = df2.sort_values(by=sortby, ascending=False)
+            df2 = df2.round(2).style.format('{0:,.2f}%')\
+                     .background_gradient(cmap='RdYlGn')\
                      .set_properties(**{'font-size': '10pt',})
     
     return df2
@@ -327,8 +334,15 @@ def plot_chart(data, cat, start_date=one_yr):
     df = ((((1+data[cat].dropna()[start_date:date.today()].pct_change().fillna(0.00))).cumprod()-1)).round(4)
     fig = px.line(df, x=df.index, y=df.columns)
     fig.update_layout(xaxis_title='Date',
-                      yaxis_title='Return (%)', font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f"),
-                      legend_title_text='Securities', plot_bgcolor = 'White', yaxis_tickformat = '%', width=1300, height=650)
+                      yaxis_title='Return (%)', font=dict(family="Segoe UI, monospace", size=12, color="#7f7f7f"),
+                      legend_title_text='Securities', plot_bgcolor = 'White', yaxis_tickformat = '%', width=450, height=650,
+                      legend=dict(
+                                   orientation="h",
+                                    yanchor="bottom",
+                                    y=-1.5,
+                                    xanchor="right",
+                                    x=1
+                                ))
     fig.update_traces(hovertemplate='Date: %{x} <br>Return: %{y:.2%}')
     fig.update_yaxes(automargin=True)
     return fig
@@ -348,7 +362,7 @@ def trend_analysis(data, cat, start_date=one_yr, inv='B', ma=15):
             y=list(data[cat].columns), zmax=3, zmin=-3,
             colorscale='rdylgn', hovertemplate='Date: %{x}<br>Security: %{y}<br>Return Z-Score: %{z}<extra></extra>', colorbar = dict(title='Return Z-Score')))
 
-    fig.update_layout(xaxis_nticks=20, font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f"), width=1300, height=650)
+    fig.update_layout(xaxis_nticks=20, font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f"), width=700, height=650)
     return fig
 
 # Additional Settings for Interactive Widget Buttons for Charts & Plots
@@ -381,13 +395,15 @@ def world_indices():
 
 def world_id_plots(wdx):
     daily_usd = ((world_indices()[wdx]*100).dropna().sort_values(ascending=False))
-    fig = px.bar(daily_usd, color=daily_usd, color_continuous_scale='rdylgn', text=world_indices().sort_values(by=wdx, ascending=False)['Country'])
+    fig = px.bar(daily_usd, color=daily_usd, color_continuous_scale='rdylgn', text=world_indices().sort_values(by=wdx, ascending=False)['Country'],
+                 orientation='v')
     fig.update_layout(title = 'World Indices Performance (%) (EOD)',
                            xaxis_title='Indices',
                            yaxis_title='Return (%)', font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f"),
-                           legend_title_text='Return(%)', plot_bgcolor = 'White', yaxis_tickformat = '{:.2f}%', width=1300, height=650, hovermode='x')
+                           legend_title_text='Return(%)', plot_bgcolor = 'White', yaxis_tickformat = '{:.2f}%', width=400, height=500)
     fig.update_traces(hovertemplate='Index: %{x} <br>Return: %{y:.2f}%')
-    fig.update_yaxes(automargin=True)
+    fig.update_yaxes(automargin=True, showspikes=True)
+    fig.update_xaxes(showspikes=True)
     return fig
 
 
@@ -395,7 +411,9 @@ def display_items(data, asset_class, cat):
     dtype1 = st.selectbox('Data Type: ', ('Multi Timeframe Returns Table', 'Performance Chart', 'Rolling Returns Trend Heatmap', 'All'))
     if dtype1=='Multi Timeframe Returns Table':
         #print(st.write("As of "+ str(data.index[-1])))
-        st.dataframe(returns_hmap(data=data[cat], asset_class=asset_class, cat=cat), height=1500)
+        start= st.date_input("Custom Start Date: ", date(2020,3,23))
+        end = st.date_input("Custom End Date: ", date.today())
+        st.dataframe(returns_hmap(data=data[cat], asset_class=asset_class, cat=cat, start=start, end=end), height=1500)
     elif dtype1=='Performance Chart':
         st.subheader("Price Return Performance")
         start_date = st.selectbox('Select Period', list(disp_opts.keys()), index=3, format_func = format_func, key='chart')
@@ -452,23 +470,23 @@ elif side_options =='Cross Asset Data':
     st.header(asset_class)
     if asset_class=="Fixed Income":
         if st.checkbox('Show Live Chart'):
-            components.iframe("https://harshshivlani.github.io/x-asset/fixedinc-chart", height=650)
+            components.iframe("https://harshshivlani.github.io/x-asset/fixedinc-chart", height=500)
         option = st.selectbox('Category: ', ('All Fixed Income', 'Sovereign Fixed Income', 'Corporate Credit', 'High Yield', 'Municipals'))
         st.write('**Note:** All returns are in USD')
         print(display_items(fixedinc, 'Fixed Income', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Securities'])))
 
     elif asset_class=='World Equities':
         if st.checkbox('Show Live Data'):
-            components.iframe("https://harshshivlani.github.io/x-asset/indices", height=650)
+            components.iframe("https://harshshivlani.github.io/x-asset/indices", width=670, height=500)
         if st.checkbox('Show Live Chart'):
-            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
-        option = st.selectbox('Category: ', ('All Countries', 'Emerging Markets', 'Asia', 'G10', 'Europe', 'Commodity Linked'))
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=500)
+        option = st.selectbox('Category: ', ('G10', 'Emerging Markets', 'Asia', 'Europe', 'Commodity Linked', 'All Countries'))
         st.write('**Note:** All returns are in USD')
         print(display_items(worldeq, 'World Equities', cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Countries'])))
 
     elif asset_class=='Sectoral Equities':
         if st.checkbox('Show Live Chart'):
-            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=500)
         option = st.selectbox('Category: ', ('United States', 'Eurozone', 'China', 'Canada', 'Australia'))
         st.write('**Note:** Sectoral Equity ETF Returns are in local currency, except China and US ETFs which are in USD')
         print(display_items(sectoral, 'Sectoral',  cat=list(pd.read_excel('etf_names.xlsx', sheet_name=option)['Sectors'])))
@@ -498,45 +516,49 @@ elif side_options =='Cross Asset Data':
         if st.checkbox('Show Live Data'):
             components.iframe("https://harshshivlani.github.io/x-asset/cur", height=650)
         if st.checkbox('Show Live Chart'):
-            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=500)
         print(display_items(fx, 'Currencies', cat=list(fx.columns)))
 
     elif asset_class=='Commodities':
         if st.checkbox('Show Live Data'):
             components.iframe("https://harshshivlani.github.io/x-asset/comd", height=650)
         if st.checkbox('Show Live Chart'):
-            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=500)
         st.write('**Note:** All returns are in USD')
         print(display_items(comd, 'Commodities', cat=list(comd.columns)))
 
     elif asset_class=='World Indices':
         if st.checkbox('Show World Indices Map'):
             st.subheader('World Equity Market USD Returns Heatmap (EOD)')
-            ret_type = st.selectbox('Return Period: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)'))
+            ret_type = st.selectbox('Return Period: ', ('1-Day', '1-Week', '1-Month', 'YTD'))
             iso = pd.read_excel('World_Indices_List.xlsx', sheet_name='iso')
             iso.set_index('Country', inplace=True)
-            data2 = etf.format_world_data(world_indices())[0].merge(iso['iso_alpha'], on='Country')
-            data2[['$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)']] = data2[['$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)']].round(4)*100
+            data2 = etf.format_world_data(world_indices(), country='Yes')[0].merge(iso['iso_alpha'], on='Country')
+            data2[['1-Day', '1-Week', '1-Month', 'YTD']] = data2[['1-Day', '1-Week', '1-Month', 'YTD']].round(4)*100
 
             df = data2
             fig1 = px.choropleth(df, locations="iso_alpha",
                                 color=ret_type,
                                 hover_name="Country",
                                 color_continuous_scale='RdYlGn')
-            fig1.update_layout(width=1000, height=650)
+            fig1.update_layout(width=400, height=300)
             st.plotly_chart(fig1)
 
         if st.checkbox('Show Live Markets'):
-            components.iframe("https://harshshivlani.github.io/x-asset/indices", height=500)
+            components.iframe("https://harshshivlani.github.io/x-asset/indices", width=670, height=500)
 
         if st.checkbox('Show Live Chart'):
-            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=500)
         
         st.subheader("Multi-TimeFrame Return Table:")
         usd = st.selectbox('Currency: ', ('USD', 'Local Currency'))
-        print(st.dataframe(etf.format_world_data(world_indices(), usd=usd)[1]))
-        wdx = st.selectbox('Plot Data Type: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)'))
-        st.plotly_chart(world_id_plots(wdx), width=2000, height=1500)
+        if st.checkbox("Show Countries"):
+            print(st.dataframe(etf.format_world_data(world_indices(), usd=usd, country='Yes')[1], height=1000))
+        else:
+            print(st.dataframe(etf.format_world_data(world_indices(), usd=usd, country='No')[1], height=1000))
+        if st.checkbox("Show Returns Bar Plot"):
+            wdx = st.selectbox('Plot Data Type: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)'))
+            st.plotly_chart(world_id_plots(wdx))
 
 elif side_options=='Macroeconomic Data':
      st.subheader('Macroeconomic Data')
