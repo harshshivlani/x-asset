@@ -32,7 +32,7 @@ from pandas.tseries import offsets
 one_m = date.today() - datetime.timedelta(30)
 three_m = date.today() - datetime.timedelta(90)
 six_m = date.today() - datetime.timedelta(120)
-one_yr = date.today() - datetime.timedelta(500)
+one_yr = date.today() - datetime.timedelta(370)
 ytd = date.today() - offsets.YearBegin()
 year = date.today().year
 yest = date.today() - datetime.timedelta(1)
@@ -119,11 +119,11 @@ def import_data_yahoo(asset_class):
     etf_list = etf_list.sort_values(by='Ticker')
 
     #Build an empty df to store historical 1 year data
-    df = pd.DataFrame(index=pd.bdate_range(start=oneyr, end=date.today()))
+    df = pd.DataFrame(index=pd.bdate_range(start=one_yr, end=date.today()))
     df.index.name='Date'
 
     #download and merge all data
-    df1 = Ticker(list(etf_list['Ticker']), asynchronous=True).history(start=one_yr)['adjclose']
+    df1 = Ticker(list(etf_list['Ticker']), asynchronous=True).history(start=date(date.today().year -1 , date.today().month, date.today().day))['adjclose']
     df1 = pd.DataFrame(df1).unstack().T.reset_index(0).drop('level_0', axis=1)
     df1.index.name = 'Date'
     df1.index = pd.to_datetime(df1.index)
@@ -134,6 +134,7 @@ def import_data_yahoo(asset_class):
     df.columns = list(etf_list[asset_class])
     return df
 
+@st.cache
 def yield_curve(country='United States'):    
     df = investpy.bonds.get_bonds_overview(country=country)
     df.set_index('name', inplace=True)
@@ -145,9 +146,8 @@ def yield_curve(country='United States'):
         df.index = df.index.str.strip(country)
     return df['last']
 
-@st.cache
-def show_yc():
 
+def show_yc():
     us = yield_curve('United States')
     uk = yield_curve('United Kingdom')
     china = yield_curve('China')
@@ -164,53 +164,53 @@ def show_yc():
     brazil = yield_curve('Brazil')
     
     fig = make_subplots(
-        rows=7, cols=2,
+        rows=14, cols=1,
         subplot_titles=("United States", "United Kingdom", "China", "Australia", "Germany", "Japan", "Canada", "India", "Italy", "France", "Russia", "Philippines", "Thailand", "Brazil"))
 
     fig.add_trace(go.Scatter(x=us.index, y=us, mode='lines+markers', name='US', line_shape='spline'),
                   row=1, col=1)
 
     fig.add_trace(go.Scatter(x=uk.index, y=uk, mode='lines+markers', name='UK', line_shape='spline'),
-                  row=1, col=2)
-
-    fig.add_trace(go.Scatter(x=china.index, y=china, mode='lines+markers', name='China', line_shape='spline'),
                   row=2, col=1)
 
-    fig.add_trace(go.Scatter(x=aus.index, y=aus, mode='lines+markers', name='Australia', line_shape='spline'),
-                  row=2, col=2)
-
-    fig.add_trace(go.Scatter(x=germany.index, y=germany, mode='lines+markers', name='Germany', line_shape='spline'),
+    fig.add_trace(go.Scatter(x=china.index, y=china, mode='lines+markers', name='China', line_shape='spline'),
                   row=3, col=1)
 
-    fig.add_trace(go.Scatter(x=japan.index, y=japan, mode='lines+markers', name='Japan', line_shape='spline'),
-                  row=3, col=2)
-
-    fig.add_trace(go.Scatter(x=can.index, y=can, mode='lines+markers', name='Canada', line_shape='spline'),
+    fig.add_trace(go.Scatter(x=aus.index, y=aus, mode='lines+markers', name='Australia', line_shape='spline'),
                   row=4, col=1)
 
-    fig.add_trace(go.Scatter(x=ind.index, y=ind, mode='lines+markers', name='India', line_shape='spline'),
-                  row=4, col=2)
-
-    fig.add_trace(go.Scatter(x=italy.index, y=italy, mode='lines+markers', name='Italy', line_shape='spline'),
+    fig.add_trace(go.Scatter(x=germany.index, y=germany, mode='lines+markers', name='Germany', line_shape='spline'),
                   row=5, col=1)
 
-    fig.add_trace(go.Scatter(x=france.index, y=france, mode='lines+markers', name='France', line_shape='spline'),
-                  row=5, col=2)
-
-    fig.add_trace(go.Scatter(x=brazil.index, y=brazil, mode='lines+markers', name='Brazil', line_shape='spline'),
+    fig.add_trace(go.Scatter(x=japan.index, y=japan, mode='lines+markers', name='Japan', line_shape='spline'),
                   row=6, col=1)
 
-    fig.add_trace(go.Scatter(x=thai.index, y=thai, mode='lines+markers', name='Thailand', line_shape='spline'),
-                  row=6, col=2)
-
-    fig.add_trace(go.Scatter(x=phil.index, y=phil, mode='lines+markers', name='Philippines', line_shape='spline'),
+    fig.add_trace(go.Scatter(x=can.index, y=can, mode='lines+markers', name='Canada', line_shape='spline'),
                   row=7, col=1)
 
-    fig.add_trace(go.Scatter(x=rus.index, y=rus, mode='lines+markers', name='Russia', line_shape='spline'),
-                  row=7, col=2)
+    fig.add_trace(go.Scatter(x=ind.index, y=ind, mode='lines+markers', name='India', line_shape='spline'),
+                  row=8, col=1)
 
-    fig.update_layout(height=2500, width=1200,
-                      title_text="Global Sovereign Yield Curves")
+    fig.add_trace(go.Scatter(x=italy.index, y=italy, mode='lines+markers', name='Italy', line_shape='spline'),
+                  row=9, col=1)
+
+    fig.add_trace(go.Scatter(x=france.index, y=france, mode='lines+markers', name='France', line_shape='spline'),
+                  row=10, col=1)
+
+    fig.add_trace(go.Scatter(x=brazil.index, y=brazil, mode='lines+markers', name='Brazil', line_shape='spline'),
+                  row=11, col=1)
+
+    fig.add_trace(go.Scatter(x=thai.index, y=thai, mode='lines+markers', name='Thailand', line_shape='spline'),
+                  row=12, col=1)
+
+    fig.add_trace(go.Scatter(x=phil.index, y=phil, mode='lines+markers', name='Philippines', line_shape='spline'),
+                  row=13, col=1)
+
+    fig.add_trace(go.Scatter(x=rus.index, y=rus, mode='lines+markers', name='Russia', line_shape='spline'),
+                  row=14, col=1)
+
+    fig.update_layout(height=5000, width=400,
+                      title_text="Global Sovereign Yield Curves", showlegend=False)
     fig.update_yaxes(title_text="Yield (%)", showgrid=True, zeroline=True, zerolinecolor='red', tickformat = '.3f')
     fig.update_xaxes(title_text="Maturity (Yrs)")
     fig.update_layout(font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f")
@@ -219,6 +219,13 @@ def show_yc():
     fig.update_yaxes(automargin=True)
 
     return fig
+
+@st.cache
+def ytm(country, maturity):
+        df = pd.DataFrame(investpy.get_bond_historical_data(bond= str(country)+' '+str(maturity), from_date=oneyr, to_date=tdy)['Close'])
+        df.columns = [str(country)]
+        df.index = pd.to_datetime(df.index)
+        return pd.DataFrame(df)
 
 
 @st.cache(allow_output_mutation=True)
@@ -237,12 +244,6 @@ def global_yields(countries=['U.S.', 'Germany', 'U.K.', 'Italy', 'France', 'Cana
 
     twos = pd.DataFrame(index=pd.bdate_range(start=oneyr, end=date.today()))
     twos.index.name='Date'
-
-    def ytm(country, maturity):
-        df = pd.DataFrame(investpy.get_bond_historical_data(bond= str(country)+' '+str(maturity), from_date=oneyr, to_date=tdy)['Close'])
-        df.columns = [str(country)]
-        df.index = pd.to_datetime(df.index)
-        return pd.DataFrame(df)
 
     cntry = countries
     
@@ -335,14 +336,14 @@ def plot_chart(data, cat, start_date=one_yr):
     fig = px.line(df, x=df.index, y=df.columns)
     fig.update_layout(xaxis_title='Date',
                       yaxis_title='Return (%)', font=dict(family="Segoe UI, monospace", size=12, color="#7f7f7f"),
-                      legend_title_text='Securities', plot_bgcolor = 'White', yaxis_tickformat = '%', width=450, height=650,
+                      legend_title_text='Securities', plot_bgcolor = 'White', yaxis_tickformat = '%', width=600, height=600,
                       legend=dict(
                                    orientation="h",
                                     yanchor="bottom",
-                                    y=-1.5,
+                                    y=-1,
                                     xanchor="right",
                                     x=1
-                                ))
+                                ), margin=dict(l=0,r=0,b=0,t=20,pad=1))
     fig.update_traces(hovertemplate='Date: %{x} <br>Return: %{y:.2%}')
     fig.update_yaxes(automargin=True)
     return fig
@@ -362,7 +363,8 @@ def trend_analysis(data, cat, start_date=one_yr, inv='B', ma=15):
             y=list(data[cat].columns), zmax=3, zmin=-3,
             colorscale='rdylgn', hovertemplate='Date: %{x}<br>Security: %{y}<br>Return Z-Score: %{z}<extra></extra>', colorbar = dict(title='Return Z-Score')))
 
-    fig.update_layout(xaxis_nticks=20, font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f"), width=700, height=650)
+    fig.update_layout(xaxis_nticks=20, font=dict(family="Segoe UI, monospace", size=12, color="#7f7f7f"),
+                        margin=dict(l=0,r=0,b=0,t=30,pad=1), width=700, height=500)
     return fig
 
 # Additional Settings for Interactive Widget Buttons for Charts & Plots
@@ -391,17 +393,18 @@ def world_indices():
     world_indices = etf.updated_world_indices('Major')
     return world_indices
 
+world_indices1 = world_indices()
 
+from scipy import stats
 
 def world_id_plots(wdx):
-    daily_usd = ((world_indices()[wdx]*100).dropna().sort_values(ascending=False))
-    fig = px.bar(daily_usd, color=daily_usd, color_continuous_scale='rdylgn', text=world_indices().sort_values(by=wdx, ascending=False)['Country'],
-                 orientation='v')
-    fig.update_layout(title = 'World Indices Performance (%) (EOD)',
-                           xaxis_title='Indices',
-                           yaxis_title='Return (%)', font=dict(family="Segoe UI, monospace", size=13, color="#7f7f7f"),
-                           legend_title_text='Return(%)', plot_bgcolor = 'White', yaxis_tickformat = '{:.2f}%', width=400, height=500)
-    fig.update_traces(hovertemplate='Index: %{x} <br>Return: %{y:.2f}%')
+    df = ((world_indices1[0][wdx]*100).dropna().sort_values(ascending=False))
+    daily_usd = (df - df.mean())/df.std()
+    fig = px.bar(daily_usd, y=daily_usd, color=daily_usd, color_continuous_scale='rdylgn', orientation='v')
+    fig.update_layout(xaxis_title='Indices',
+                           yaxis_title='Return (%)', font=dict(family="Segoe UI, monospace", size=11, color="#7f7f7f"),
+                           legend_title_text='Return(%)', plot_bgcolor = 'White', yaxis_tickformat = '{:.2f}%', width=600, height=450)
+    fig.update_traces(hovertemplate='Index: %{x} <br>Return: %{y:.2f}')
     fig.update_yaxes(automargin=True, showspikes=True)
     fig.update_xaxes(showspikes=True)
     return fig
@@ -499,11 +502,12 @@ elif side_options =='Cross Asset Data':
     elif asset_class=='Global Yield Curves':
         opt = st.selectbox('Data Type: ', ('Global Yields Table', 'Yield Curve Charts'))
         if opt=='Yield Curve Charts':
-            st.write('As of '+str(now))
+            st.write('As of '+str(date.today().strftime("%b %d, %Y")))
             st.plotly_chart(show_yc())
         else:
             st.write('Global Sovereign Yields: 2 Year, 5 Year and 10 Year Maturity')
             st.write('Note: Yields are denoted in % terms. Change is denoted in basis points (bps)')
+            st.write('As of '+ str(date.today().strftime("%b %d, %Y")))
             st.dataframe(global_yields(), width=1500, height=1000)
 
     elif asset_class=='REITs':
@@ -533,15 +537,28 @@ elif side_options =='Cross Asset Data':
             ret_type = st.selectbox('Return Period: ', ('1-Day', '1-Week', '1-Month', 'YTD'))
             iso = pd.read_excel('World_Indices_List.xlsx', sheet_name='iso')
             iso.set_index('Country', inplace=True)
-            data2 = etf.format_world_data(world_indices(), country='Yes')[0].merge(iso['iso_alpha'], on='Country')
+            data2 = etf.format_world_data(world_indices1[0], country='Yes')[0].merge(iso['iso_alpha'], on='Country')
             data2[['1-Day', '1-Week', '1-Month', 'YTD']] = data2[['1-Day', '1-Week', '1-Month', 'YTD']].round(4)*100
 
             df = data2
+            for col in df.columns:
+                df[col] = df[col].astype(str)
+            
+            df['text'] = 'Return: '+df[ret_type]+'%' + '<br>' \
+                          'Country: '+ df['Country'] + '<br>' \
+                           #'Index: '+ data2['Indices'].astype('str')
             fig1 = px.choropleth(df, locations="iso_alpha",
                                 color=ret_type,
                                 hover_name="Country",
                                 color_continuous_scale='RdYlGn')
-            fig1.update_layout(width=400, height=300)
+            fig1 = go.Figure(data=go.Choropleth(locations=df['iso_alpha'], z=df[ret_type].astype(float), colorscale='RdYlGn', autocolorscale=False,
+                text=df['text']))
+
+
+
+            fig1.update_layout(width=420, height=300, margin=dict(l=0,r=0,b=0,t=0,pad=1),
+                                xaxis=dict(scaleanchor='x', constrain='domain'),
+                  coloraxis_colorbar_x=1)
             st.plotly_chart(fig1)
 
         if st.checkbox('Show Live Markets'):
@@ -552,13 +569,17 @@ elif side_options =='Cross Asset Data':
         
         st.subheader("Multi-TimeFrame Return Table:")
         usd = st.selectbox('Currency: ', ('USD', 'Local Currency'))
+        st.write('As of ' + str(world_indices1[1].strftime("%b %d, %Y")))
         if st.checkbox("Show Countries"):
-            print(st.dataframe(etf.format_world_data(world_indices(), usd=usd, country='Yes')[1], height=1000))
+            print(st.dataframe(etf.format_world_data(world_indices1[0], usd=usd, country='Yes')[1], height=1000))
         else:
-            print(st.dataframe(etf.format_world_data(world_indices(), usd=usd, country='No')[1], height=1000))
+            print(st.dataframe(etf.format_world_data(world_indices1[0], usd=usd, country='No')[1], height=1000))
         if st.checkbox("Show Returns Bar Plot"):
             wdx = st.selectbox('Plot Data Type: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)'))
-            st.plotly_chart(world_id_plots(wdx))
+            fig = world_id_plots(wdx)
+            fig.update_layout(margin=dict(l=0,r=0,b=0,t=0,pad=1))
+            #fig.update_yaxes(ticksuffix="%")
+            st.plotly_chart(fig)
 
 elif side_options=='Macroeconomic Data':
      st.subheader('Macroeconomic Data')
@@ -587,7 +608,7 @@ elif side_options=='Macroeconomic Data':
 
 elif side_options == 'Economic Calendar':
      st.subheader('Economic Calendar')
-     components.iframe("https://harshshivlani.github.io/x-asset/ecocalendar", height=650)
+     components.iframe("https://harshshivlani.github.io/x-asset/ecocalendar", height=800)
      #importances = st.multiselect('Importance: ', ['Low', 'Medium', 'High'], ['Medium', 'High'])
      #st.dataframe(etf.eco_calendar(importances=importances), width=2000, height=1200)
 

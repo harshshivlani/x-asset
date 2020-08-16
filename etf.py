@@ -406,7 +406,10 @@ def updated_world_indices(category='Major'):
     for i in range(len(idxs)):
         df = df.join(idx_data(index_names[i], country_names[i]), on='Date')
         
-    df1 = df.iloc[:-1,:].ffill().dropna()
+    if date.today().weekday() < 5:
+        df1 = df.iloc[:-1,:].ffill().dropna()
+    else:
+        df1 = df.ffill().dropna()
     df1.index.name = 'Date'
     
     #Local Currency Returns Table
@@ -462,7 +465,7 @@ def updated_world_indices(category='Major'):
     testa['$ 1M Chg (%)'] = (1+testa['1M Chg (%)'])*(1+testa['1M CChg (%)'])-1
     testa['$ Chg YTD (%)'] = (1+testa['Chg YTD (%)'])*(1+testa['CChg YTD (%)'])-1
 
-    return testa
+    return [testa, df1.index[-1]]
 
 def format_world_data(testa, usd='USD', country='No'):
     if country == 'Yes':
