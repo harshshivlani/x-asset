@@ -402,11 +402,11 @@ def world_id_plots(wdx):
     daily_usd = (df - df.mean())/df.std()
     fig = px.bar(daily_usd, y=daily_usd, color=daily_usd, color_continuous_scale='rdylgn', orientation='v')
     fig.update_layout(xaxis_title='Indices',
-                           yaxis_title='Return (%)', font=dict(family="Segoe UI, monospace", size=11, color="#7f7f7f"),
+                           yaxis_title='Cross Sectional Z-Score', font=dict(family="Segoe UI, monospace", size=11, color="#7f7f7f"),
                            legend_title_text='Return(%)', plot_bgcolor = 'White', yaxis_tickformat = '{:.2f}%', width=600, height=450)
     fig.update_traces(hovertemplate='Index: %{x} <br>Return: %{y:.2f}')
     fig.update_yaxes(automargin=True, showspikes=True)
-    fig.update_xaxes(showspikes=True)
+    fig.update_xaxes(showspikes=True, tickmode='linear')
     return fig
 
 
@@ -551,7 +551,7 @@ elif side_options =='Cross Asset Data':
                                 color=ret_type,
                                 hover_name="Country",
                                 color_continuous_scale='RdYlGn')
-            fig1 = go.Figure(data=go.Choropleth(locations=df['iso_alpha'], z=df[ret_type].astype(float), colorscale='RdYlGn', autocolorscale=False,
+            fig1 = go.Figure(data=go.Choropleth(locations=df['iso_alpha'], z=df[ret_type].astype(float).round(2), colorscale='RdYlGn', autocolorscale=False,
                 text=df['text']))
 
 
@@ -574,7 +574,7 @@ elif side_options =='Cross Asset Data':
             print(st.dataframe(etf.format_world_data(world_indices1[0], usd=usd, country='Yes')[1], height=1000))
         else:
             print(st.dataframe(etf.format_world_data(world_indices1[0], usd=usd, country='No')[1], height=1000))
-        if st.checkbox("Show Returns Bar Plot"):
+        if st.checkbox("Show Returns Z-Score Bar Plot"):
             wdx = st.selectbox('Plot Data Type: ', ('$ 1D Chg (%)', '$ 1W Chg (%)', '$ 1M Chg (%)', '$ Chg YTD (%)', '1D Chg (%)', '1W Chg (%)', '1M Chg (%)', 'Chg YTD (%)'))
             fig = world_id_plots(wdx)
             fig.update_layout(margin=dict(l=0,r=0,b=0,t=0,pad=1))
