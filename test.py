@@ -512,20 +512,20 @@ elif side_options =='Cross Asset Data':
 
     elif asset_class=='REITs':
         if st.checkbox('Show Live Chart'):
-            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=650)
+            components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=500)
         st.write('**Note:** All returns are in USD')
         print(display_items(reits, 'REIT', cat=list(reits.columns)))
 
     elif asset_class=='Currencies':
         if st.checkbox('Show Live Data'):
-            components.iframe("https://harshshivlani.github.io/x-asset/cur", height=650)
+            components.iframe("https://harshshivlani.github.io/x-asset/cur", width=670, height=500)
         if st.checkbox('Show Live Chart'):
             components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=500)
         print(display_items(fx, 'Currencies', cat=list(fx.columns)))
 
     elif asset_class=='Commodities':
         if st.checkbox('Show Live Data'):
-            components.iframe("https://harshshivlani.github.io/x-asset/comd", height=650)
+            components.iframe("https://harshshivlani.github.io/x-asset/comd", width=670, height=500)
         if st.checkbox('Show Live Chart'):
             components.iframe("https://harshshivlani.github.io/x-asset/equity-chart", height=500)
         st.write('**Note:** All returns are in USD')
